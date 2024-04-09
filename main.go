@@ -1,7 +1,23 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"os"
+
+	"github.com/Genekkion/moai/internal/utils"
+	"github.com/joho/godotenv"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 func main() {
-    log.Println("test")
+	utils.LogError(godotenv.Load(), true)
+
+	program := tea.NewProgram(InitModel())
+	_, err := program.Run()
+	if err != nil {
+		fmt.Println("Something went wrong D:<")
+		os.Exit(1)
+	}
+
 }

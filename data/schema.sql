@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS Notes;
+CREATE TABLE Notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL DEFAULT '',
+    data TEXT NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT current_timestamp
+);
+
+
