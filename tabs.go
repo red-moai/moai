@@ -18,12 +18,16 @@ var (
 		Light: "#874BFD",
 		Dark:  "#7D56F4",
 	}
+
 	inactiveTabStyle = lipgloss.NewStyle().
 				Border(inactiveTabBorder, true).
 				BorderForeground(highlightColor).
 				Padding(1, 1)
-	activeTabStyle = inactiveTabStyle.Copy().Border(activeTabBorder, true)
-	windowStyle    = lipgloss.NewStyle().
+
+	activeTabStyle = inactiveTabStyle.Copy().
+			Border(activeTabBorder, true)
+
+	windowStyle = lipgloss.NewStyle().
 			BorderForeground(highlightColor).
 			Padding(2, 0).
 			Align(lipgloss.Center).

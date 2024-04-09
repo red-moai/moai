@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	zone "github.com/lrstanley/bubblezone"
 )
 
 type Model struct {
@@ -23,7 +24,8 @@ type Model struct {
 	HomeQuote    string
 
 	// Diary state
-	diarySearch textinput.Model
+	diarySearch  textinput.Model
+	diaryDisplay string
 }
 
 func (model *Model) initTabs() {
@@ -60,6 +62,7 @@ func (model Model) Init() tea.Cmd {
 
 const modKey = "alt+"
 
+// Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := message.(type) {
@@ -104,6 +107,7 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	return model, nil
 }
 
+// Main function to render contents of the application.
 func (model Model) View() string {
 
 	doc := strings.Builder{}
@@ -147,13 +151,10 @@ func (model Model) View() string {
 	}
 
 	doc.WriteString(
-		windowStyle.Width(
-			lipgloss.Width(row) - windowStyle.GetHorizontalFrameSize(),
-		).Render(
-			//model.TabContent[model.ActiveTab],
-			renderData,
-		),
+		windowStyle.Width(lipgloss.Width(row) -
+			windowStyle.GetHorizontalFrameSize(),
+		).Render(renderData),
 	)
 
-	return docStyle.Render(doc.String())
+	return zone.Scan(docStyle.Render(doc.String()))
 }
