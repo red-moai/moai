@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/Genekkion/moai/internal/utils"
 	"github.com/joho/godotenv"
 
@@ -11,13 +8,10 @@ import (
 )
 
 func main() {
-	utils.LogError(godotenv.Load(), true)
+	utils.LogError(godotenv.Load())
 
 	program := tea.NewProgram(InitModel())
 	_, err := program.Run()
-	if err != nil {
-		fmt.Println("Something went wrong D:<")
-		os.Exit(1)
-	}
+	utils.LogError(err)
 
 }

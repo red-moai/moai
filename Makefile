@@ -1,4 +1,5 @@
 build:
-	go build
+	@go build
 run: build
-	./moai
+	@clear
+	@./moai
