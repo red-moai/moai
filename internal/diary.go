@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"time"
@@ -41,7 +41,7 @@ func mockDiaryData() []Diary {
 	}
 }
 
-func InitDiary() DiaryModel {
+func InitDiary(_ *Model) tea.Model {
 	model := DiaryModel{
 		SearchInput:   textinput.New(),
 		SearchDisplay: "",

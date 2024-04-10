@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/Genekkion/moai/internal"
 	"github.com/Genekkion/moai/internal/log"
 	"github.com/joho/godotenv"
 
@@ -28,8 +29,7 @@ func main() {
 
 	zone.NewGlobal()
 	defer zone.Close()
-
-	program := tea.NewProgram(InitModel())
+	program := tea.NewProgram(internal.InitModel())
 	_, err := program.Run()
 	log.FatalWrapper(err)
 

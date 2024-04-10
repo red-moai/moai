@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"os"
@@ -15,42 +15,70 @@ import (
 )
 
 type Model struct {
-	ModKey string
+	// Globals
+	Error error
 
-	// Global
-	Tabs       []string
-	TabContent []string
-	ActiveTab  int // 0 index
-	TabModels  []tea.Model
-	Error      error
+	// WARN: To be removed for prod
+	Debug *string
+
+	// Tab
+	Tabs      *[]string
+	TabModels []tea.Model
+	ActiveTab *int // 0 index
 }
 
 var (
+	MAX_TABS       = 9
 	VALID_MOD_KEYS = []string{
 		"alt",
 	}
+
+	MODKEY = "alt+"
 )
+
+// Use empty string if no change to title
+func (model Model) SwapActiveModel(title string, replacementModel tea.Model) {
+	activeTab := *model.ActiveTab
+	if title != "" {
+		(*model.Tabs)[activeTab] = title
+	}
+	model.TabModels[activeTab] = replacementModel
+}
 
 // Initialises the model to be ran by bubbletea
 func InitModel() Model {
-	model := Model{}
-	model.initTabs()
-	//model.initDiary()
+	activeTab := 0
+	model := Model{
+		ActiveTab: &activeTab,
+
+		Tabs: &[]string{
+			"Home",
+			/*
+				"Diary",
+				"Notes",
+				"Settings",
+			*/
+		},
+	}
+	model.TabModels = []tea.Model{
+		InitHome(&model),
+		//InitBork(&model),
+	}
 
 	isFound := false
-	model.ModKey = os.Getenv("MODKEY")
+	MODKEY = os.Getenv("MODKEY")
 
 	for _, modKey := range VALID_MOD_KEYS {
-		if model.ModKey == modKey {
+		if MODKEY == modKey {
 			isFound = true
 			break
 		}
 	}
 	if !isFound {
 		log.Warn("Value entered for MODKEY env missing / invalid, using default of \"alt\"")
-		model.ModKey = "alt"
+		MODKEY = "alt"
 	}
-	model.ModKey += "+"
+	MODKEY += "+"
 	return model
 }
 
@@ -66,38 +94,62 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		keypress := msg.String()
 
-		if strings.HasPrefix(keypress, model.ModKey) {
-			commandKey := strings.TrimPrefix(keypress, model.ModKey)
+		if strings.HasPrefix(keypress, MODKEY) {
+			commandKey := strings.TrimPrefix(keypress, MODKEY)
 
 			tabIndex, err := strconv.Atoi(commandKey)
 			if err == nil && tabIndex > 0 && tabIndex <= 9 {
-				model.ActiveTab = tabIndex - 1
+				*model.ActiveTab = tabIndex - 1
 				return model, nil
 			}
 
 			switch commandKey {
 			case "t":
-				if len(model.Tabs) < 9 {
-					model.Tabs = append(model.Tabs, "New Tab")
-					model.TabModels = append(model.TabModels, InitNewTab())
+				// Hard cap for number of tabs
+				if len(*(model.Tabs)) < MAX_TABS {
+					*model.Tabs = append(*model.Tabs, "New Tab")
+					model.TabModels = append(model.TabModels, InitNewTab(&model))
+
+					// Move right
+					*model.ActiveTab++
 				}
+
 				return model, nil
 			case "c":
-				if len(model.Tabs) > 1 {
-					model.Tabs = model.Tabs[:len(model.Tabs)-1]
-					if model.ActiveTab > len(model.Tabs)-1 {
-						model.ActiveTab--
-					}
-					return model, nil
+				if len(*model.Tabs) == 1 {
+					return model, tea.Quit
 				}
-				return model, tea.Quit
+
+				*model.Tabs = append(
+					(*model.Tabs)[:*model.ActiveTab],
+					(*model.Tabs)[*model.ActiveTab+1:]...,
+				)
+				model.TabModels = append(
+					model.TabModels[:*model.ActiveTab],
+					model.TabModels[*model.ActiveTab+1:]...,
+				)
+
+				// Move left
+				if *model.ActiveTab > 0 {
+					*model.ActiveTab--
+				}
+				return model, nil
+
 			case "q":
 				return model, tea.Quit
+
 			case "right", "l":
-				model.ActiveTab = min(model.ActiveTab+1, len(model.Tabs)-1)
+				if *model.ActiveTab < len(*model.Tabs)-1 {
+					*model.ActiveTab++
+				}
+
 				return model, nil
+
 			case "left", "h":
-				model.ActiveTab = max(model.ActiveTab-1, 0)
+				if *model.ActiveTab > 0 {
+					*model.ActiveTab--
+				}
+
 				return model, nil
 			}
 
@@ -109,7 +161,8 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	var command tea.Cmd
-	model.TabModels[model.ActiveTab], command = model.TabModels[model.ActiveTab].Update(message)
+	model.TabModels[*model.ActiveTab], command =
+		model.TabModels[*model.ActiveTab].Update(message)
 	return model, command
 }
 
@@ -142,11 +195,11 @@ func (model Model) View() string {
 	doc := strings.Builder{}
 
 	var renderedTabs []string
-	for i, tab := range model.Tabs {
+	for i, tab := range *model.Tabs {
 		var style lipgloss.Style
 		isFirst := i == 0
-		isLast := i == len(model.Tabs)-1
-		isActive := i == model.ActiveTab
+		isLast := i == len(*model.Tabs)-1
+		isActive := i == *model.ActiveTab
 
 		if isActive {
 			style = activeTabStyle.Copy()
@@ -206,17 +259,16 @@ func (model Model) View() string {
 
 	doc.WriteString("\n")
 
-	if len(model.TabModels) > 0 {
-		doc.WriteString(
-			windowStyle.Width(int(float64(width) * 0.95)).
-				Render(model.TabModels[model.ActiveTab].View()),
-		)
-	} else {
-		doc.WriteString(
-			windowStyle.Width(int(float64(width) * 0.95)).
-				Render(model.TabContent[model.ActiveTab]),
-		)
-	}
+	doc.WriteString(
+		windowStyle.Width(int(float64(width) * 0.95)).
+			Render(model.TabModels[*model.ActiveTab].View()),
+	)
+	doc.WriteString("\n")
 
+	if model.Debug != nil {
+		doc.WriteString("Debug: >" + *model.Debug + "<\n")
+	} else {
+		doc.WriteString("Debug: empty\n")
+	}
 	return zone.Scan(docStyle.Render(doc.String()))
 }

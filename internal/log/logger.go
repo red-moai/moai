@@ -97,6 +97,22 @@ func FatalWrapper(err error) error {
 	}
 	return err
 }
+
+func DebugCaller(message interface{}, keyValue ...interface{}) {
+
+	logger.Debug(message, keyValue...)
+	programCounter, file, line, ok := runtime.Caller(1)
+	if !ok {
+		logger.Debug("Error retrieving stack trace.")
+	} else {
+		logger.Debug("Stack trace:",
+			"function", runtime.FuncForPC(programCounter).Name(),
+			"file", file,
+			"line", line,
+		)
+	}
+}
+
 func Error(message interface{}, keyValue ...interface{}) {
 	errorLogger.Error(message, keyValue...)
 }

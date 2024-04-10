@@ -1,7 +1,6 @@
-package main
+package internal
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -47,28 +46,3 @@ var (
 			Border(lipgloss.NormalBorder()).
 			UnsetBorderTop()
 )
-
-func (model *Model) initTabs() {
-	// Tab labels
-	model.Tabs = []string{
-		"Home",
-		/*
-			"Diary",
-			"Notes",
-			"Settings",
-		*/
-	}
-	// TODO: To be removed when each tab's content
-	// has been completed
-	model.TabContent = []string{
-		"home stuff",
-		/*
-			"notes",
-			"diary",
-			"Settings",
-		*/
-	}
-	model.TabModels = []tea.Model{
-		InitHome(),
-	}
-}

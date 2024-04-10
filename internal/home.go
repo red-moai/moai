@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ type HomeModel struct {
 	HomeQuote    string
 }
 
-func InitHome() HomeModel {
+func InitHome(_ *Model) tea.Model {
 	model := HomeModel{}
 	model.HomeChoices = []string{
 		"Oonga boonga",
