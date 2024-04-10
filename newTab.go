@@ -1,48 +1,75 @@
 package main
 
 import (
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type NewTabModel struct{}
+type ModelInit func() tea.Model
 
-func (model Model) initNewTab() {
-	textInput := textinput.New()
-	textInput.Placeholder = "Search"
-	textInput.Focus()
-	textInput.CharLimit = 255
-	textInput.Width = 20
+var (
+	MOAI_MODELS = map[string]ModelInit{
+		"Home": func() tea.Model {
+			return InitHome()
+		},
+		"Diary": func() tea.Model {
+			return InitDiary()
+		},
+	}
 
-	model.newTabSearch = textInput
+	AVAILABLE_MODELS = []list.Item{
+	}
+)
+
+type NewTabModel struct {
+	SearchInput   textinput.Model
+	SearchDisplay string
+
+	ModelList list.Model
+}
+
+func InitNewTab() NewTabModel {
+	model := NewTabModel{
+		SearchInput:   textinput.New(),
+		SearchDisplay: "",
+	}
+
+	model.SearchInput.Placeholder = "Search"
+	model.SearchInput.Focus()
+	model.SearchInput.CharLimit = 255
+	model.SearchInput.Width = 20
+
+	return model
 }
 
 func (newTabModel NewTabModel) Init() tea.Cmd {
 	return nil
 }
 
-func (newTabModel NewTabModel) Update(model *Model, message tea.Msg) (tea.Model, tea.Cmd) {
+func (model NewTabModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
 	case tea.KeyMsg:
 
 		switch message.Type {
 		case tea.KeyEnter:
-			model.newTabDisplay = model.newTabSearch.Value()
+			model.SearchDisplay = model.SearchInput.Value()
 		}
 
 	case error:
-		model.Error = message
+		model.SearchDisplay = message.Error()
 		return model, nil
 	}
 
 	var command tea.Cmd
-	model.newTabSearch, command = model.newTabSearch.Update(message)
+	model.SearchInput, command = model.SearchInput.Update(message)
 	return model, command
 }
 
-func (newTabModel NewTabModel) View(model Model) string {
-	text := "new Tab\n"
-	text += model.newTabSearch.View() + "\n"
-	text += model.newTabDisplay + "\n"
+func (model NewTabModel) View() string {
+
+	text := model.SearchInput.View() + "\n"
+	text += model.SearchDisplay + "\n"
+
 	return text
 }

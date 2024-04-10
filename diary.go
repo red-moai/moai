@@ -16,6 +16,11 @@ type Diary struct {
 	UpdatedAt *time.Time
 }
 
+type DiaryModel struct {
+	SearchInput   textinput.Model
+	SearchDisplay string
+}
+
 func mockDiaryData() []Diary {
 	timeNow := time.Now()
 	return []Diary{
@@ -36,37 +41,45 @@ func mockDiaryData() []Diary {
 	}
 }
 
-func (model *Model) initDiary() {
-	textInput := textinput.New()
-	textInput.Placeholder = "Search"
-	textInput.Focus()
-	textInput.CharLimit = 255
-	textInput.Width = 20
+func InitDiary() DiaryModel {
+	model := DiaryModel{
+		SearchInput:   textinput.New(),
+		SearchDisplay: "",
+	}
+	model.SearchInput.Placeholder = "Search"
+	model.SearchInput.Focus()
+	model.SearchInput.CharLimit = 255
+	model.SearchInput.Width = 20
 
-	model.diarySearch = textInput
+	return model
 }
 
-func (model *Model) updateDiary(message tea.Msg) (tea.Model, tea.Cmd) {
+func (model DiaryModel) Init() tea.Cmd {
+	return nil
+}
+
+func (model DiaryModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	var command tea.Cmd
 	switch message := message.(type) {
 	case tea.KeyMsg:
 
 		switch message.Type {
 		case tea.KeyEnter:
-			model.diaryDisplay = model.diarySearch.Value()
+			model.SearchDisplay = model.SearchInput.Value()
 		}
 
 	case error:
-		model.Error = message
+		model.SearchDisplay = message.Error()
 		return model, nil
 	}
 
-	model.diarySearch, command = model.diarySearch.Update(message)
+	model.SearchInput, command = model.SearchInput.Update(message)
 	return model, command
 }
 
-func (model *Model) renderDiary() string {
-	text := model.diarySearch.View() + "\n"
-	text += model.diaryDisplay + "\n"
+func (model DiaryModel) View() string {
+	text := "Diary\n"
+	text += model.SearchInput.View() + "\n"
+	text += model.SearchDisplay + "\n"
 	return text
 }

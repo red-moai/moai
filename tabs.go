@@ -1,6 +1,7 @@
 package main
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -51,8 +52,8 @@ func (model *Model) initTabs() {
 	// Tab labels
 	model.Tabs = []string{
 		"Home",
-		"Diary",
 		/*
+			"Diary",
 			"Notes",
 			"Settings",
 		*/
@@ -67,7 +68,7 @@ func (model *Model) initTabs() {
 			"Settings",
 		*/
 	}
-	model.TabModels = []MoaiModel{
-		HomeModel{},
+	model.TabModels = []tea.Model{
+		InitHome(),
 	}
 }

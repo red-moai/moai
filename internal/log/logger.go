@@ -98,15 +98,15 @@ func FatalWrapper(err error) error {
 	return err
 }
 func Error(message interface{}, keyValue ...interface{}) {
-	errorLogger.Error(message, keyValue)
+	errorLogger.Error(message, keyValue...)
 }
 
 func Fatal(message interface{}, keyValue ...interface{}) {
-	errorLogger.Fatal(message, keyValue)
+	errorLogger.Fatal(message, keyValue...)
 }
 
 func Warn(message interface{}, keyValue ...interface{}) {
-	logger.Warn(message, keyValue)
+	logger.Warn(message, keyValue...)
 }
 
 func Debug(message interface{}, keyValue ...interface{}) {

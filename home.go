@@ -14,22 +14,29 @@ var (
 	}
 )
 
-type HomeModel struct{}
+type HomeModel struct {
+	HomeChoices  []string
+	HomeCursor   int
+	HomeSelected map[int]struct{}
+	HomeQuote    string
+}
 
-func (model *Model) initHome() {
+func InitHome() HomeModel {
+	model := HomeModel{}
 	model.HomeChoices = []string{
 		"Oonga boonga",
 		"boo ya",
 	}
 	model.HomeSelected = make(map[int]struct{})
 	model.HomeQuote = homeQuotes[rand.Intn(len(homeQuotes))]
+	return model
 }
 
 func (model HomeModel) Init() tea.Cmd {
 	return nil
 }
 
-func (homeModel HomeModel) Update(model *Model, message tea.Msg) (tea.Model, tea.Cmd) {
+func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
 	// Is it a key press?
 	case tea.KeyMsg:
@@ -62,14 +69,10 @@ func (homeModel HomeModel) Update(model *Model, message tea.Msg) (tea.Model, tea
 		}
 	}
 
-	//log.Debug("", "exiting", model.HomeCursor)
-
-	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
 	return model, nil
 }
 
-func (homeModel HomeModel) View(model Model) string {
+func (model HomeModel) View() string {
 	height, width, _ := getTerminalDimensions()
 
 	// Header

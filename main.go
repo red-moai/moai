@@ -12,7 +12,6 @@ import (
 )
 
 var requiredEnv = []string{
-	"MODKEY",
 }
 
 func main() {

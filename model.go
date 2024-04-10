@@ -21,22 +21,8 @@ type Model struct {
 	Tabs       []string
 	TabContent []string
 	ActiveTab  int // 0 index
-	TabModels  []MoaiModel
+	TabModels  []tea.Model
 	Error      error
-
-	// New Tabs
-	newTabSearch  textinput.Model
-	newTabDisplay string
-
-	// Diary state
-	diarySearch  textinput.Model
-	diaryDisplay string
-
-	// Home state
-	HomeChoices  []string
-	HomeCursor   int
-	HomeSelected map[int]struct{}
-	HomeQuote    string
 }
 
 var (
@@ -49,8 +35,7 @@ var (
 func InitModel() Model {
 	model := Model{}
 	model.initTabs()
-	model.initHome()
-	model.initDiary()
+	//model.initDiary()
 
 	isFound := false
 	model.ModKey = os.Getenv("MODKEY")
@@ -62,7 +47,7 @@ func InitModel() Model {
 		}
 	}
 	if !isFound {
-		log.Warn("Invalid MODKEY env entered, using default of \"alt\"")
+		log.Warn("Value entered for MODKEY env missing / invalid, using default of \"alt\"")
 		model.ModKey = "alt"
 	}
 	model.ModKey += "+"
@@ -94,12 +79,15 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			case "t":
 				if len(model.Tabs) < 9 {
 					model.Tabs = append(model.Tabs, "New Tab")
-					model.TabModels = append(model.TabModels, NewTabModel{})
+					model.TabModels = append(model.TabModels, InitNewTab())
 				}
 				return model, nil
 			case "c":
 				if len(model.Tabs) > 1 {
 					model.Tabs = model.Tabs[:len(model.Tabs)-1]
+					if model.ActiveTab > len(model.Tabs)-1 {
+						model.ActiveTab--
+					}
 					return model, nil
 				}
 				return model, tea.Quit
@@ -120,7 +108,9 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			return model, tea.Quit
 		}
 	}
-	return model.TabModels[model.ActiveTab].Update(&model, message)
+	var command tea.Cmd
+	model.TabModels[model.ActiveTab], command = model.TabModels[model.ActiveTab].Update(message)
+	return model, command
 }
 
 // Returns the rows then columns
@@ -219,7 +209,7 @@ func (model Model) View() string {
 	if len(model.TabModels) > 0 {
 		doc.WriteString(
 			windowStyle.Width(int(float64(width) * 0.95)).
-				Render(model.TabModels[model.ActiveTab].View(model)),
+				Render(model.TabModels[model.ActiveTab].View()),
 		)
 	} else {
 		doc.WriteString(
