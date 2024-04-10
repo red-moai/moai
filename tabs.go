@@ -1,6 +1,8 @@
 package main
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+)
 
 func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
 	border := lipgloss.RoundedBorder()
@@ -16,16 +18,26 @@ var (
 	docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
 	highlightColor    = lipgloss.AdaptiveColor{
 		Light: "#874BFD",
-		Dark:  "#7D56F4",
+		Dark:  "#414868",
+	}
+	activeColor = lipgloss.AdaptiveColor{
+		Light: "#874BFD",
+		Dark:  "#F7768E",
 	}
 
-	inactiveTabStyle = lipgloss.NewStyle().
-				Border(inactiveTabBorder, true).
-				BorderForeground(highlightColor).
-				Padding(1, 1)
+	inactiveBorderStyle = lipgloss.NewStyle().
+				Foreground(highlightColor)
 
-	activeTabStyle = inactiveTabStyle.Copy().
-			Border(activeTabBorder, true)
+	baseTabStyle = lipgloss.NewStyle().
+			Padding(0, 1)
+
+	inactiveTabStyle = baseTabStyle.Copy().
+				Border(inactiveTabBorder, true).
+				BorderForeground(highlightColor)
+
+	activeTabStyle = baseTabStyle.Copy().
+			Border(activeTabBorder, true).
+			BorderForeground(activeColor)
 
 	windowStyle = lipgloss.NewStyle().
 			BorderForeground(highlightColor).
@@ -34,3 +46,28 @@ var (
 			Border(lipgloss.NormalBorder()).
 			UnsetBorderTop()
 )
+
+func (model *Model) initTabs() {
+	// Tab labels
+	model.Tabs = []string{
+		"Home",
+		"Diary",
+		/*
+			"Notes",
+			"Settings",
+		*/
+	}
+	// TODO: To be removed when each tab's content
+	// has been completed
+	model.TabContent = []string{
+		"home stuff",
+		/*
+			"notes",
+			"diary",
+			"Settings",
+		*/
+	}
+	model.TabModels = []MoaiModel{
+		HomeModel{},
+	}
+}
