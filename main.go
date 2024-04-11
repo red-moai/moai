@@ -4,16 +4,14 @@ import (
 	"errors"
 	"os"
 
-	"github.com/Genekkion/moai/internal"
-	"github.com/Genekkion/moai/internal/log"
+	"github.com/Genekkion/moai/log"
 	"github.com/joho/godotenv"
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
 )
 
-var requiredEnv = []string{
-}
+var requiredEnv = []string{}
 
 func main() {
 	log.FatalWrapper(godotenv.Load())
@@ -29,7 +27,7 @@ func main() {
 
 	zone.NewGlobal()
 	defer zone.Close()
-	program := tea.NewProgram(internal.InitModel())
+	program := tea.NewProgram(InitModel())
 	_, err := program.Run()
 	log.FatalWrapper(err)
 

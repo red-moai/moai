@@ -1,10 +1,11 @@
-package internal
+package bork
 
 import (
 	"net/http"
 	"strings"
 
-	"github.com/Genekkion/moai/internal/components"
+	"github.com/Genekkion/moai/components"
+	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,8 +18,8 @@ var (
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("#CFC9C2"))
 
-	borkSubStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("#FFFFFF"))
+	// borkSubStyle = lipgloss.NewStyle().
+	// 		Background(lipgloss.Color("#FFFFFF"))
 
 	borkEntries = []list.Item{
 		BorkEntry{
@@ -75,7 +76,7 @@ type BorkModel struct {
 	subModel *BorkFormModel
 
 	ModelList components.DefaultListModel
-	MainModel *Model
+	MainModel external.MoaiModel
 }
 
 type BorkFormModel struct {
@@ -141,7 +142,7 @@ func initSubBork(parentModel *BorkModel) tea.Model {
 				Negative("Nay"),
 		),
 	).WithKeyMap(borkKeyMap)
-	
+
 	model.form = form
 	return model
 }
@@ -198,24 +199,27 @@ func (model BorkFormModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	return model, tea.Batch(commands...)
 }
 func (model BorkFormModel) View() string {
-
 	text := "Who we borkin at\n"
 	text += model.form.View() + "\n"
 	return text
 }
 
 var (
-	borkListKeyBindAdd = key.NewBinding(
-		key.WithKeys(MODKEY+"a"),
-		key.WithHelp(MODKEY+"a", "add new"),
-	)
+	// Depends on modKey
+	borkListKeyBindAdd key.Binding
+
 	borkListKeyBindEscape = key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "exit"),
 	)
 )
 
-func InitBork(mainModel *Model) tea.Model {
+func InitBork(mainModel external.MoaiModel) tea.Model {
+	borkListKeyBindAdd = key.NewBinding(
+		key.WithKeys(mainModel.ModKey()+"a"),
+		key.WithHelp(mainModel.ModKey()+"a", "add new"),
+	)
+
 	model := BorkModel{
 		client: *http.DefaultClient,
 		ModelList: components.InitDefaultList(
@@ -227,7 +231,6 @@ func InitBork(mainModel *Model) tea.Model {
 			borkListKeyBindAdd,
 			borkListKeyBindEscape,
 		),
-		MainModel:      mainModel,
 		subModel:       nil,
 		borkCategories: borkCategories,
 	}

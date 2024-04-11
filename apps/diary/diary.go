@@ -1,8 +1,9 @@
-package internal
+package diary
 
 import (
 	"time"
 
+	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/textinput"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -41,7 +42,7 @@ func mockDiaryData() []Diary {
 	}
 }
 
-func InitDiary(_ *Model) tea.Model {
+func InitDiary(_ external.MoaiModel) tea.Model {
 	model := DiaryModel{
 		SearchInput:   textinput.New(),
 		SearchDisplay: "",

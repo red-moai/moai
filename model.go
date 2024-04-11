@@ -1,4 +1,4 @@
-package internal
+package main
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/Genekkion/moai/internal/log"
+	"github.com/Genekkion/moai/apps/home"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -17,9 +17,6 @@ import (
 type Model struct {
 	// Globals
 	Error error
-
-	// WARN: To be removed for prod
-	Debug *string
 
 	// Tab
 	Tabs      *[]string
@@ -37,7 +34,7 @@ var (
 )
 
 // Use empty string if no change to title
-func (model Model) SwapActiveModel(title string, replacementModel tea.Model) {
+func (model *Model) SwapActiveModel(title string, replacementModel tea.Model) {
 	activeTab := *model.ActiveTab
 	if title != "" {
 		(*model.Tabs)[activeTab] = title
@@ -45,24 +42,16 @@ func (model Model) SwapActiveModel(title string, replacementModel tea.Model) {
 	model.TabModels[activeTab] = replacementModel
 }
 
+
 // Initialises the model to be ran by bubbletea
 func InitModel() Model {
 	activeTab := 0
-	model := Model{
+	model := &Model{
 		ActiveTab: &activeTab,
 
 		Tabs: &[]string{
 			"Home",
-			/*
-				"Diary",
-				"Notes",
-				"Settings",
-			*/
 		},
-	}
-	model.TabModels = []tea.Model{
-		InitHome(&model),
-		//InitBork(&model),
 	}
 
 	isFound := false
@@ -75,11 +64,23 @@ func InitModel() Model {
 		}
 	}
 	if !isFound {
-		log.Warn("Value entered for MODKEY env missing / invalid, using default of \"alt\"")
+		//log.Warn("Value entered for MODKEY env missing / invalid, using default of \"alt\"")
 		MODKEY = "alt"
 	}
+
 	MODKEY += "+"
-	return model
+
+	//var swapModelFunc SwapModelFunc
+	model.TabModels = []tea.Model{
+		home.InitHome(model),
+
+		//InitBork(&model),
+	}
+	return *model
+}
+
+func (model Model) ModKey() string {
+	return MODKEY
 }
 
 func (model Model) Init() tea.Cmd {
@@ -89,7 +90,6 @@ func (model Model) Init() tea.Cmd {
 
 // Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
-
 	switch msg := message.(type) {
 	case tea.KeyMsg:
 		keypress := msg.String()
@@ -108,7 +108,10 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				// Hard cap for number of tabs
 				if len(*(model.Tabs)) < MAX_TABS {
 					*model.Tabs = append(*model.Tabs, "New Tab")
-					model.TabModels = append(model.TabModels, InitNewTab(&model))
+					model.TabModels = append(
+						model.TabModels,
+						InitNewTab(&model),
+					)
 
 					// Move right
 					*model.ActiveTab++
@@ -265,10 +268,5 @@ func (model Model) View() string {
 	)
 	doc.WriteString("\n")
 
-	if model.Debug != nil {
-		doc.WriteString("Debug: >" + *model.Debug + "<\n")
-	} else {
-		doc.WriteString("Debug: empty\n")
-	}
 	return zone.Scan(docStyle.Render(doc.String()))
 }

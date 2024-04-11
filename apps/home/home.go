@@ -1,9 +1,10 @@
-package internal
+package home
 
 import (
 	"fmt"
 	"math/rand"
 
+	"github.com/Genekkion/moai/external"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -21,7 +22,7 @@ type HomeModel struct {
 	HomeQuote    string
 }
 
-func InitHome(_ *Model) tea.Model {
+func InitHome(_ external.MoaiModel) tea.Model {
 	model := HomeModel{}
 	model.HomeChoices = []string{
 		"Oonga boonga",
@@ -73,12 +74,9 @@ func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (model HomeModel) View() string {
-	height, width, _ := getTerminalDimensions()
 
 	// Header
 	text := model.HomeQuote + "\n"
-	text += fmt.Sprintf("height: %d \n", height)
-	text += fmt.Sprintf("width: %d \n", width)
 
 	// Iterate over our choices
 	for i, choice := range model.HomeChoices {
