@@ -6,10 +6,12 @@ import (
 	"github.com/Genekkion/moai/apps/calendar"
 	"github.com/Genekkion/moai/apps/diary"
 	"github.com/Genekkion/moai/apps/home"
+	"github.com/Genekkion/moai/apps/todo"
 	"github.com/Genekkion/moai/components"
 	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type ModelInit func(external.MoaiModel) tea.Model
@@ -19,10 +21,11 @@ type SwapModelFunc func(string, tea.Model)
 var (
 	MOAI_APPS = map[string]ModelInit{
 		"Home":       home.InitHome,
-		"Diary":      diary.InitDiary,
 		"Bork":       bork.InitBork,
 		"Calculator": calculator.InitCalculator,
 		"Calendar":   calendar.InitCalendar,
+		"Diary":      diary.InitDiary,
+		"Todo":       todo.InitTodo,
 	}
 
 	AVAILABLE_APPS = []list.Item{
@@ -45,6 +48,10 @@ var (
 		TabEntry{
 			title:       "Diary",
 			description: "Your personal diary",
+		},
+		TabEntry{
+			title:       "Todo",
+			description: "A simple todo list",
 		},
 	}
 )
@@ -75,9 +82,23 @@ func InitNewTab(mainModel external.MoaiModel) NewTabModel {
 		ModelList: components.InitDefaultList(
 			AVAILABLE_APPS,
 			"Available apps",
-			30,
-			20,
-			nil,
+			mainModel.AvailableWidth(),
+			mainModel.AvailableHeight(),
+			func() *list.Styles {
+				styles := list.DefaultStyles()
+				styles.Title = styles.Title.
+					Foreground(lipgloss.Color("#7AA2F7")).
+					Background(lipgloss.NoColor{}).
+					Bold(true)
+				return &styles
+			}(),
+			func() *list.DefaultItemStyles {
+				delegate := list.NewDefaultItemStyles()
+				delegate.SelectedTitle = delegate.SelectedTitle.
+					Foreground(lipgloss.Color("#F7768E"))
+
+				return &delegate
+			}(),
 		),
 		mainModel: mainModel,
 	}
@@ -96,8 +117,7 @@ func (model NewTabModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	if model.ModelList.SelectedItem != nil {
 		title := model.ModelList.SelectedItem.(TabEntry).title
 		replacementModel := MOAI_APPS[title](model.mainModel)
-
-		model.mainModel.SwapActiveModel(title, replacementModel)
+		model.mainModel.SetTabTitle(title)
 		return replacementModel, command
 
 	}
@@ -105,5 +125,8 @@ func (model NewTabModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (model NewTabModel) View() string {
-	return model.ModelList.View() + "\n"
+	styles := lipgloss.NewStyle().
+		Width(model.mainModel.AvailableWidth()).
+		PaddingTop(1)
+	return styles.Render(model.ModelList.View())
 }

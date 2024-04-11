@@ -4,19 +4,19 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
-	"unsafe"
 
 	"github.com/Genekkion/moai/apps/home"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
 )
 
 type Model struct {
 	// Globals
 	Error error
+
+	isReady        bool
+	terminalWidth  int
+	terminalHeight int
 
 	// Tab
 	Tabs      *[]string
@@ -33,20 +33,76 @@ var (
 	MODKEY = "alt+"
 )
 
-// Use empty string if no change to title
-func (model *Model) SwapActiveModel(title string, replacementModel tea.Model) {
-	activeTab := *model.ActiveTab
-	if title != "" {
-		(*model.Tabs)[activeTab] = title
-	}
-	model.TabModels[activeTab] = replacementModel
-}
+func (model Model) tabView() string {
+	var renderedTabs []string
+	for i, tab := range *model.Tabs {
+		var style lipgloss.Style
+		isFirst := i == 0
+		isLast := i == len(*model.Tabs)-1
+		isActive := i == *model.ActiveTab
 
+		if isActive {
+			style = activeTabStyle.Copy()
+		} else {
+			style = inactiveTabStyle.Copy()
+		}
+		border, _, _, _, _ := style.GetBorder()
+		if isFirst {
+			if isActive {
+				border.BottomLeft = "│"
+			} else {
+				border.BottomLeft = "├"
+			}
+		} else if isLast {
+			if isActive {
+				border.BottomRight = "│"
+			} else {
+				border.BottomRight = "┤"
+			}
+		}
+		style = style.Border(border)
+		renderedTabs = append(renderedTabs, style.Render(tab))
+		if isLast {
+			row := lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				renderedTabs...)
+			templen := max(0, model.terminalWidth-
+				lipgloss.Width(row))
+			if templen > 0 {
+				if isActive {
+					border.BottomRight = "└"
+				} else {
+					border.BottomRight = "┴"
+				}
+			}
+
+			style = style.Border(border)
+			renderedTabs[len(renderedTabs)-1] = style.Render(tab)
+		}
+
+	}
+
+	row := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		renderedTabs...)
+	text := strings.Builder{}
+	text.WriteString(row)
+
+	templen := max(0, model.terminalWidth-
+		lipgloss.Width(row)-1)
+
+	for range templen {
+		text.WriteString(inactiveBorderStyle.Render("─"))
+	}
+	text.WriteString(inactiveBorderStyle.Render("┐"))
+
+	return text.String()
+}
 
 // Initialises the model to be ran by bubbletea
 func InitModel() Model {
 	activeTab := 0
-	model := &Model{
+	model := Model{
 		ActiveTab: &activeTab,
 
 		Tabs: &[]string{
@@ -64,35 +120,66 @@ func InitModel() Model {
 		}
 	}
 	if !isFound {
-		//log.Warn("Value entered for MODKEY env missing / invalid, using default of \"alt\"")
 		MODKEY = "alt"
 	}
 
 	MODKEY += "+"
 
-	//var swapModelFunc SwapModelFunc
 	model.TabModels = []tea.Model{
 		home.InitHome(model),
-
-		//InitBork(&model),
 	}
-	return *model
+
+	return model
 }
 
 func (model Model) ModKey() string {
 	return MODKEY
 }
 
+func (model Model) TerminalHeight() int {
+	return model.terminalHeight
+}
+
+func (model Model) TerminalWidth() int {
+	return model.terminalWidth
+}
+
+func (model Model) Style() lipgloss.Style {
+	return mainStyle
+}
+
+func (model Model) AvailableHeight() int {
+	return model.terminalHeight -
+		lipgloss.Height(model.tabView()) -
+		3 // 2 for padding, 1 for border
+}
+func (model Model) AvailableWidth() int {
+	return model.terminalWidth -
+		4 // 2 for padding, 2 for border
+}
+
+func (model Model) SetTabTitle(title string) {
+	(*model.Tabs)[*model.ActiveTab] = title
+}
+
 func (model Model) Init() tea.Cmd {
-	return textinput.Blink
-	//return nil
+	return tea.SetWindowTitle("M O A I 🗿")
 }
 
 // Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := message.(type) {
+	switch message := message.(type) {
+	case tea.WindowSizeMsg:
+
+		mainStyle.Height(message.Height -
+			lipgloss.Height(model.tabView()))
+		mainStyle.Width(message.Width - 2)
+
+		model.terminalHeight = message.Height
+		model.terminalWidth = message.Width
+
 	case tea.KeyMsg:
-		keypress := msg.String()
+		keypress := message.String()
 
 		if strings.HasPrefix(keypress, MODKEY) {
 			commandKey := strings.TrimPrefix(keypress, MODKEY)
@@ -114,7 +201,7 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 					)
 
 					// Move right
-					*model.ActiveTab++
+					*model.ActiveTab = len(*(model.Tabs)) - 1
 				}
 
 				return model, nil
@@ -162,111 +249,20 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return model, tea.Quit
 		}
+
 	}
+
 	var command tea.Cmd
 	model.TabModels[*model.ActiveTab], command =
 		model.TabModels[*model.ActiveTab].Update(message)
 	return model, command
-}
 
-// Returns the rows then columns
-func getTerminalDimensions() (int, int, error) {
-	var dimensions struct {
-		rows    uint16
-		cols    uint16
-		xpixels uint16
-		ypixels uint16
-	}
-
-	_, _, err := syscall.Syscall(
-		syscall.SYS_IOCTL,
-		os.Stdout.Fd(),
-		syscall.TIOCGWINSZ,
-		uintptr(unsafe.Pointer(&dimensions)),
-	)
-	if err != 0 {
-		return 0, 0, err
-	}
-
-	return int(dimensions.rows), int(dimensions.cols), err
 }
 
 // Main function to render contents of the application.
 func (model Model) View() string {
-	_, width, _ := getTerminalDimensions()
-
-	doc := strings.Builder{}
-
-	var renderedTabs []string
-	for i, tab := range *model.Tabs {
-		var style lipgloss.Style
-		isFirst := i == 0
-		isLast := i == len(*model.Tabs)-1
-		isActive := i == *model.ActiveTab
-
-		if isActive {
-			style = activeTabStyle.Copy()
-		} else {
-			style = inactiveTabStyle.Copy()
-		}
-		border, _, _, _, _ := style.GetBorder()
-		if isFirst {
-			if isActive {
-				border.BottomLeft = "│"
-			} else {
-				border.BottomLeft = "├"
-			}
-		} else if isLast {
-			if isActive {
-				border.BottomRight = "│"
-			} else {
-				border.BottomRight = "┤"
-			}
-		}
-		style = style.Border(border)
-		renderedTabs = append(renderedTabs, style.Render(tab))
-		if isLast {
-			row := lipgloss.JoinHorizontal(
-				lipgloss.Top,
-				renderedTabs...)
-			templen := int(float64(width)*0.95) -
-				lipgloss.Width(row)
-
-			if templen > 0 {
-				if isActive {
-					border.BottomRight = "└"
-				} else {
-					border.BottomRight = "┴"
-				}
-			}
-
-			style = style.Border(border)
-			renderedTabs[len(renderedTabs)-1] = style.Render(tab)
-		}
-
-	}
-
-	row := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		renderedTabs...)
-
-	doc.WriteString(row)
-
-	templen := int(float64(width)*0.95) -
-		lipgloss.Width(row)
-
-	for range templen + 1 {
-		doc.WriteString(inactiveBorderStyle.Render("─"))
-	}
-	doc.WriteString(inactiveBorderStyle.Render("┐"))
-
-	doc.WriteString("\n")
-
-	doc.WriteString(
-		windowStyle.Width(int(float64(width) * 0.95)).
-			Render(model.TabModels[*model.ActiveTab].View()),
-	)
-	doc.WriteString("\n")
-
-	return zone.Scan(docStyle.Render(doc.String()))
+	text := strings.Builder{}
+	text.WriteString(model.tabView())
+	text.WriteString(mainStyle.Render(model.TabModels[*model.ActiveTab].View()))
+	return text.String()
 }

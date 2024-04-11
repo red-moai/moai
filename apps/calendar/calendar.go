@@ -37,16 +37,59 @@ var (
 			Title: "Sun", Width: COLUMN_WIDTH,
 		},
 	}
+
+	styles      = table.DefaultStyles()
+	headerStyle = styles.Header.
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("#FF0000")).
+			BorderBottom(true).
+			Bold(true)
+
+	defaultSelectedStyle = table.DefaultStyles().Selected.
+				Foreground(lipgloss.Color("#FAF9F6")).
+				Bold(false)
+
+	activeSelectedStyle = table.DefaultStyles().Selected.
+				Foreground(lipgloss.Color("#1A1B26")).
+				Background(lipgloss.Color("#F7768E"))
+
+	cellStyle = styles.Cell.
+			Align(lipgloss.Center).
+			Bold(false)
+
+	todayStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#9AA5CE")).
+			Underline(true).
+			Bold(true)
+
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#B4F9F8")).
+			Border(lipgloss.RoundedBorder()).
+			Padding(0, 1).
+			MarginBottom(1).
+			Bold(true)
+
+	modelStyle = lipgloss.NewStyle()
 )
 
 type CalendarModel struct {
 	currentTime *time.Time
 
-	calendar    *table.Model
-	targetMonth *time.Month
-	targetYear  *int
+	focusedIndex *int
+	calendar     *[]table.Model
+	targetMonth  *time.Month
+	targetYear   *int
+	events       *components.DefaultListModel
+}
 
-	events *components.DefaultListModel
+func getDefaultStyle() table.Styles {
+	styles.Selected = defaultSelectedStyle
+	return styles
+}
+
+func getActiveStyle() table.Styles {
+	styles.Selected = activeSelectedStyle
+	return styles
 }
 
 func InitCalendar(_ external.MoaiModel) tea.Model {
@@ -54,57 +97,94 @@ func InitCalendar(_ external.MoaiModel) tea.Model {
 	targetMonth := currentTime.Month()
 	targetYear := currentTime.Year()
 
-	calendar := table.New(
-		table.WithColumns(DAYS_OF_WEEK),
-		table.WithFocused(false),
-		table.WithHeight(6),
-	)
+	styles.Header = headerStyle
+	styles.Cell = cellStyle
+
+	defaultStyle := getDefaultStyle()
+
+	calendar := make([]table.Model, 7)
+	for i := range 7 {
+		calendar[i] = table.New(
+			table.WithColumns(
+				[]table.Column{
+					DAYS_OF_WEEK[i],
+				},
+			),
+			table.WithFocused(false),
+			table.WithHeight(6),
+			table.WithStyles(defaultStyle),
+		)
+
+	}
 
 	events := components.InitDefaultList(
-		nil,
+		fakeEventData,
 		"Events",
 		30,
 		15,
 		nil,
+		nil,
 	)
 
+	focusedIndex := 0
 	model := CalendarModel{
-		currentTime: &currentTime,
-		calendar:    &calendar,
-		targetMonth: &targetMonth,
-		targetYear:  &targetYear,
-		events:      &events,
+		currentTime:  &currentTime,
+		calendar:     &calendar,
+		targetMonth:  &targetMonth,
+		targetYear:   &targetYear,
+		events:       &events,
+		focusedIndex: &focusedIndex,
 	}
 
-	styles := table.DefaultStyles()
-	styles.Header = styles.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("#FF0000")).
-		BorderBottom(true).
-		Bold(true)
-	styles.Selected = styles.Selected.
-		Foreground(lipgloss.Color("#000000")).
-		Background(lipgloss.Color("#FFFFFF")).
-		Bold(false)
-	styles.Cell = styles.Cell.
-		Bold(false)
-
-	model.calendar.SetStyles(styles)
+	column := &(*model.calendar)[0]
+	column.SetStyles(getActiveStyle())
+	column.Focus()
 
 	return model
 }
 
 func (model CalendarModel) prettyDateTime() string {
-	return fmt.Sprintf("%s, %s %d",
-		model.currentTime.Weekday().String(),
-		model.currentTime.Month().String(),
-		//[:3],
-		model.currentTime.Day(),
+	return todayStyle.Render(
+		fmt.Sprintf("Today is %s, %s %d",
+			model.currentTime.Weekday().String(),
+			model.currentTime.Month().String(),
+			//[:3],
+			model.currentTime.Day(),
+		),
 	)
 }
 
 func (model CalendarModel) Init() tea.Cmd {
 	return nil
+}
+
+// Returns the row number of the current column
+func (model CalendarModel) disableCurrent() int {
+	column := &(*model.calendar)[*model.focusedIndex]
+	column.SetStyles(getDefaultStyle())
+	column.Blur()
+	return column.Cursor()
+}
+
+// rowNum should be the row number of the previous
+// column
+func (model CalendarModel) enableCurrent(rowNum int) {
+	column := &(*model.calendar)[*model.focusedIndex]
+	column.SetStyles(getActiveStyle())
+	column.Focus()
+	column.SetCursor(rowNum)
+}
+
+func (model CalendarModel) MoveLeft() {
+	rowNum := model.disableCurrent()
+	*model.focusedIndex--
+	model.enableCurrent(rowNum)
+}
+
+func (model CalendarModel) MoveRight() {
+	rowNum := model.disableCurrent()
+	*model.focusedIndex++
+	model.enableCurrent(rowNum)
 }
 
 func (model CalendarModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
@@ -114,64 +194,142 @@ func (model CalendarModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
 	case tea.KeyMsg:
 		switch message.String() {
+
+		case "alt+r":
+			*model.targetMonth = model.currentTime.Month()
+			*model.targetYear = model.currentTime.Year()
+
+		case "left":
+			if *model.focusedIndex == 0 {
+				*model.targetMonth--
+				if *model.targetMonth == 0 {
+					*model.targetMonth = 12
+					*model.targetYear--
+				}
+
+				rowNum := model.disableCurrent()
+				*model.focusedIndex = 6
+				model.enableCurrent(rowNum)
+
+			} else if *model.focusedIndex > 0 {
+				model.MoveLeft()
+			}
+
+		case "right":
+			if *model.focusedIndex == 6 {
+				*model.targetMonth++
+				if *model.targetMonth == 13 {
+					*model.targetMonth = 1
+					*model.targetYear++
+				}
+
+				rowNum := model.disableCurrent()
+				*model.focusedIndex = 0
+				model.enableCurrent(rowNum)
+
+			} else if *model.focusedIndex >= 0 && *model.focusedIndex < 6 {
+				model.MoveRight()
+			}
+
 		case "tab":
-			if model.calendar.Focused() {
-				model.calendar.Blur()
+			if *model.focusedIndex == -1 {
+				*model.focusedIndex = 0
+				(*model.calendar)[*model.focusedIndex].SetStyles(getActiveStyle())
+				(*model.calendar)[*model.focusedIndex].Focus()
 			} else {
-				model.calendar.Focus()
+				(*model.calendar)[*model.focusedIndex].SetStyles(getDefaultStyle())
+				(*model.calendar)[*model.focusedIndex].Blur()
+				*model.focusedIndex = -1
 			}
 		}
 	}
 
 	var command tea.Cmd
-	if model.calendar.Focused() {
-		*model.calendar, command = model.calendar.Update(message)
-
-	} else {
+	if *model.focusedIndex == -1 {
 		*model.events, command = model.events.Update(message)
+	} else {
+		(*model.calendar)[*model.focusedIndex],
+			command = (*model.calendar)[*model.focusedIndex].Update(message)
 	}
+
 	return model, command
+}
+
+func (model CalendarModel) prettyTitle() string {
+	return titleStyle.Render(
+		fmt.Sprintf("%s %d",
+			model.targetMonth.String(),
+			*model.targetYear,
+		),
+	)
+}
+
+func (model CalendarModel) thisMonth() bool {
+	return model.currentTime.Month() == *model.targetMonth &&
+		model.currentTime.Year() == *model.targetYear
+}
+
+func (model CalendarModel) isToday(day int) bool {
+	return model.thisMonth() && day == model.currentTime.Day()
+}
+
+func (model CalendarModel) calendarView() string {
+	numDays := model.getNumDays()
+	startOffset := model.getStartOffset()
+	height := (numDays + startOffset + 6) / 7
+	calendarArray := make([][]string, height)
+	for i := range height {
+		calendarArray[i] = make([]string, 7)
+	}
+
+	for i := 0; i < startOffset; i++ {
+		calendarArray[0][i] = ""
+	}
+	x := 1
+	for i := startOffset; i < 7; i++ {
+		calendarArray[0][i] = fmt.Sprintf("%d", x)
+		x++
+	}
+	for i := 1; i < height; i++ {
+		for j := range 7 {
+			if x <= numDays {
+				calendarArray[i][j] = fmt.Sprintf("%d", x)
+				x++
+			} else {
+				calendarArray[i][j] = ""
+			}
+		}
+	}
+
+	calendarViews := []string{}
+
+	for i := range 7 {
+		rows := []table.Row{}
+		for j := range height {
+			rows = append(rows,
+				table.Row{calendarArray[j][i]},
+			)
+		}
+		(*model.calendar)[i].SetRows(rows)
+		calendarViews = append(calendarViews,
+			(*model.calendar)[i].View(),
+		)
+	}
+	text := strings.Builder{}
+	text.WriteString(lipgloss.JoinHorizontal(lipgloss.Center,
+		calendarViews...,
+	) + "\n")
+
+	return text.String()
 }
 
 func (model CalendarModel) View() string {
 	text := strings.Builder{}
-	text.WriteString(model.prettyDateTime() + "\n")
-
-	rows := []table.Row{}
-	numDays := model.getNumDays()
-	x := 1
-	row := table.Row{}
-	for range model.getStartOffset() {
-		row = append(row, "")
-	}
-	for len(row) < 7 {
-		row = append(row, fmt.Sprintf("%d", x))
-		x++
-	}
-	rows = append(rows, row)
-	row = table.Row{}
-
-	for x <= numDays {
-		if len(row) < 7 {
-			row = append(row, fmt.Sprintf("%d", x))
-			x++
-			continue
-		}
-		rows = append(rows, row)
-		row = table.Row{}
-	}
-
-	if len(row) > 0 {
-		for len(row) < 7 {
-			row = append(row, "")
-		}
-		rows = append(rows, row)
-	}
-	model.calendar.SetRows(rows)
-
-	text.WriteString(model.calendar.View() + "\n")
+	text.WriteString(model.prettyDateTime() + "\n\n")
+	text.WriteString(model.prettyTitle() + "\n")
+	text.WriteString(model.calendarView() + "\n")
 	text.WriteString(model.events.View() + "\n")
-	return text.String()
+	return modelStyle.Render(text.String())
 }
 
 // Returns the number of days before the 1st

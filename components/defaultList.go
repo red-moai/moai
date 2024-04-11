@@ -8,8 +8,7 @@ import (
 )
 
 var (
-	defaultListStyle = lipgloss.NewStyle().
-		Margin(1, 2)
+	defaultListStyle = lipgloss.NewStyle()
 )
 
 type DefaultListModel struct {
@@ -19,8 +18,10 @@ type DefaultListModel struct {
 }
 
 func InitDefaultList(items []list.Item, title string,
-	width int, height int, customStyle *lipgloss.Style,
+	width int, height int, listStyle *list.Styles,
+	delegateStyles *list.DefaultItemStyles,
 	keyBindings ...key.Binding) DefaultListModel {
+
 	model := DefaultListModel{
 		List: list.New(
 			items,
@@ -29,11 +30,20 @@ func InitDefaultList(items []list.Item, title string,
 			height,
 		),
 		SelectedItem: nil,
-		CustomStyle:  customStyle,
 	}
 	model.List.Title = title
 	model.List.Help.ShowAll = false
 	model.List.KeyMap.Quit.Unbind()
+	if listStyle != nil {
+		model.List.Styles = *listStyle
+	}
+
+	if delegateStyles != nil {
+		delegate := list.NewDefaultDelegate()
+		delegate.Styles = *delegateStyles
+		model.List.SetDelegate(delegate)
+	}
+
 	/*
 		model.List.AdditionalShortHelpKeys = func() []key.Binding {
 			return keyBindings
@@ -65,8 +75,5 @@ func (model DefaultListModel) Update(message tea.Msg) (DefaultListModel, tea.Cmd
 }
 
 func (model DefaultListModel) View() string {
-	if model.CustomStyle != nil {
-		return model.CustomStyle.Render(model.List.View())
-	}
-	return defaultListStyle.Render(model.List.View())
+	return model.List.View()
 }

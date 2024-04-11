@@ -27,8 +27,11 @@ func main() {
 
 	zone.NewGlobal()
 	defer zone.Close()
-	program := tea.NewProgram(InitModel())
+	program := tea.NewProgram(
+		InitModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
 	_, err := program.Run()
 	log.FatalWrapper(err)
-
 }
