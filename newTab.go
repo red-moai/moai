@@ -117,7 +117,6 @@ func (model NewTabModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	if model.ModelList.SelectedItem != nil {
 		title := model.ModelList.SelectedItem.(TabEntry).title
 		replacementModel := MOAI_APPS[title](model.mainModel)
-		model.mainModel.SetTabTitle(title)
 		return replacementModel, command
 
 	}
@@ -126,8 +125,6 @@ func (model NewTabModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 func (model NewTabModel) View() string {
 	return lipgloss.NewStyle().
-		Width(model.mainModel.AvailableWidth()).
-		Height(model.mainModel.AvailableHeight()).
 		Align(lipgloss.Center, lipgloss.Center).
 		//Background(lipgloss.Color("#00FF00")).
 		Render(model.ModelList.View())

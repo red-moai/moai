@@ -337,13 +337,10 @@ func (model CalendarModel) View() string {
 	text.WriteString(model.prettyDateTime() + "\n\n")
 	text.WriteString(model.prettyTitle() + "\n")
 	text.WriteString(model.calendarView() + "\n")
-	eventStyle := lipgloss.NewStyle().
-		Width(model.MainModel.AvailableWidth() - 6)
+	eventStyle := lipgloss.NewStyle()
 	text.WriteString(
 		eventStyle.Render(model.events.View()) + "\n")
 	return modelStyle.
-		Height(model.MainModel.AvailableHeight()).
-		Width(model.MainModel.AvailableWidth()).
 		Background(lipgloss.Color("#ff0000")).
 		Render(text.String())
 }
