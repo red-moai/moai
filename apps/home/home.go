@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/Genekkion/moai/external"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -36,10 +38,12 @@ var (
 )
 
 type HomeModel struct {
-	quote   string
-	spinner spinner.Model
-
+	quote       string
+	spinner     spinner.Model
 	currentTime time.Time
+	helpModel   help.Model
+	keyMap      KeyMap
+	showHelp    bool
 
 	MainModel external.MoaiModel
 }
@@ -54,8 +58,10 @@ func InitHome(mainModel external.MoaiModel) tea.Model {
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Moon),
 		),
-		MainModel:   mainModel,
 		currentTime: time.Now(),
+		helpModel:   help.New(),
+		keyMap:      initKeyMap(mainModel.ModKey()),
+		MainModel:   mainModel,
 	}
 
 	return model
@@ -76,6 +82,8 @@ func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			Width(message.Width - 4).
 			Height(message.Height - 2)
 
+		model.helpModel.Width = message.Width
+
 	case spinner.TickMsg:
 		model.updateTime()
 
@@ -84,12 +92,18 @@ func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		return model, command
 
 	case tea.KeyMsg:
-		switch message.String() {
-
+		switch {
+		case key.Matches(message, model.keyMap.Help):
+			model.toggleHelp()
 		}
+
 	}
 
 	return model, nil
+}
+
+func (model *HomeModel) toggleHelp() {
+	model.showHelp = !model.showHelp
 }
 
 func (model HomeModel) welcomeView() string {
@@ -158,6 +172,10 @@ func (model HomeModel) View() string {
 	text.WriteString(model.timeView() + "\n")
 
 	text.WriteString(model.welcomeView() + "\n")
+
+	if model.showHelp {
+		text.WriteString(model.helpModel.View(model.keyMap))
+	}
 
 	return modelStyle.
 		Render(text.String())

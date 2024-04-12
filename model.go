@@ -4,20 +4,24 @@ import (
 	"os"
 
 	"github.com/Genekkion/moai/apps/home"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Model struct {
 	// Globals
-	Error error
+	Error  error
+	modkey string
 
 	// Tab
-	Tabs      *[]string
-	TabModels []tea.Model
-	ActiveTab *int // 0 index
-
-	HomeModel home.HomeModel
-	onHome    bool
+	Tabs        *[]string
+	TabModels   []tea.Model
+	ActiveTab   *int // 0 index
+	keyMap      KeyMap
+	HomeModel   home.HomeModel
+	menuModel   MenuModel
+	onHome      bool
+	menuSpawned bool
 }
 
 var (
@@ -25,19 +29,11 @@ var (
 	VALID_MOD_KEYS = []string{
 		"alt",
 	}
-
-	MODKEY = "alt+"
 )
 
-// Initialises the model to be ran by bubbletea
-func InitModel() Model {
-	model := Model{
-		onHome: true,
-	}
-
+func (model *Model) setModkey() {
 	modkeyFound := false
-	MODKEY = os.Getenv("MODKEY")
-
+	MODKEY := os.Getenv("MODKEY")
 	for _, modKey := range VALID_MOD_KEYS {
 		if MODKEY == modKey {
 			modkeyFound = true
@@ -47,16 +43,36 @@ func InitModel() Model {
 	if !modkeyFound {
 		MODKEY = "alt"
 	}
-
 	MODKEY += "+"
 
+	model.modkey = MODKEY
+}
+
+// Initialises the model to be ran by bubbletea
+func InitModel() Model {
+	model := Model{
+		onHome:      true,
+		menuSpawned: false,
+	}
+
+	model.setModkey()
 	model.HomeModel = home.InitHome(model).(home.HomeModel)
+	model.menuModel = InitMenu(model)
+	model.keyMap = initKeyMap(model.modkey)
 
 	return model
 }
 
+func (model *Model) toggleMenu() {
+	model.menuSpawned = !model.menuSpawned
+}
+
+func (model Model) ToggleMenu() {
+	model.toggleMenu()
+}
+
 func (model Model) ModKey() string {
-	return MODKEY
+	return model.modkey
 }
 
 func (model Model) GetOnHome() bool {
@@ -78,6 +94,10 @@ func (model Model) Init() tea.Cmd {
 	)
 }
 
+var (
+	backToHome = true
+)
+
 // Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
@@ -88,13 +108,29 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return model, tea.Quit
 		}
+
+		switch {
+		case key.Matches(message, model.keyMap.Menu):
+			model.toggleMenu()
+			backToHome = !model.menuSpawned && model.onHome
+		}
 	}
 
 	var command tea.Cmd
-	if model.onHome {
+	switch {
+	case model.menuSpawned:
+		var menuModel tea.Model
+		menuModel, command = model.menuModel.Update(message)
+		model.menuModel = menuModel.(MenuModel)
+
+	case model.onHome:
 		var homeModel tea.Model
 		homeModel, command = model.HomeModel.Update(message)
 		model.HomeModel = homeModel.(home.HomeModel)
+		if backToHome {
+			return model, tea.Batch(command, model.HomeModel.GetSpinner().Tick)
+		}
+		return model, command
 	}
 
 	/*
@@ -107,8 +143,9 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 // Main function to render contents of the application.
 func (model Model) View() string {
-	//return model.TabModels[*model.ActiveTab].View()
-	if model.onHome {
+	if model.menuSpawned {
+		return model.menuModel.View()
+	} else if model.onHome {
 		return model.HomeModel.View()
 	}
 	return "booya"
