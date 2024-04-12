@@ -7,4 +7,5 @@ type MoaiModel interface {
 	AvailableHeight() int
 	AvailableWidth() int
 	SetTabTitle(string)
+	IsReady()bool 
 }

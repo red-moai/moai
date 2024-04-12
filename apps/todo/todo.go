@@ -21,8 +21,7 @@ func InitTodo(mainModel external.MoaiModel) tea.Model {
 		list: components.InitDefaultList(
 			fakeTodoData,
 			"Todo List",
-			30,
-			30,
+			mainModel,
 			nil,
 			nil,
 		),

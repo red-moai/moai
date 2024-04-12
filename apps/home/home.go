@@ -3,9 +3,11 @@ package home
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/Genekkion/moai/external"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var (
@@ -13,6 +15,10 @@ var (
 		"Yesterday is history, tomorrow is a mystery, but today is a gift. That is why it is called the present.",
 		"The fellas",
 	}
+
+	modelStyle = lipgloss.NewStyle().
+			Padding(1).
+			Align(lipgloss.Center)
 )
 
 type HomeModel struct {
@@ -20,16 +26,21 @@ type HomeModel struct {
 	HomeCursor   int
 	HomeSelected map[int]struct{}
 	HomeQuote    string
+	MainModel    external.MoaiModel
 }
 
-func InitHome(_ external.MoaiModel) tea.Model {
-	model := HomeModel{}
-	model.HomeChoices = []string{
-		"Oonga boonga",
-		"boo ya",
+func InitHome(mainModel external.MoaiModel) tea.Model {
+	model := HomeModel{
+		HomeChoices: []string{
+
+			"Oonga boonga",
+			"boo ya",
+		},
+		HomeSelected: map[int]struct{}{},
+		HomeQuote:    homeQuotes[rand.Intn(len(homeQuotes))],
+		MainModel:    mainModel,
 	}
-	model.HomeSelected = make(map[int]struct{})
-	model.HomeQuote = homeQuotes[rand.Intn(len(homeQuotes))]
+
 	return model
 }
 
@@ -39,27 +50,20 @@ func (model HomeModel) Init() tea.Cmd {
 
 func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
-	// Is it a key press?
+
 	case tea.KeyMsg:
 		switch message.String() {
 
-		// The "up" and "k" keys move the cursor up
 		case "up", "k":
-			//log.Debug("", "before", model.HomeCursor)
 			if model.HomeCursor > 0 {
 				model.HomeCursor--
 			}
-			//log.Debug("", "after", model.HomeCursor, "pressed", message.String())
 
-		// The "down" and "j" keys move the cursor down
 		case "down", "j":
-			//log.Debug("", "before", model.HomeCursor)
 			if model.HomeCursor < len(model.HomeChoices)-1 {
 				model.HomeCursor++
 			}
-			//log.Debug("", "after", model.HomeCursor, "pressed", message.String())
-		// The "enter" key and the spacebar (a literal space) toggle
-		// the selected state for the item that the cursor is pointing at.
+
 		case "enter", " ":
 			_, ok := model.HomeSelected[model.HomeCursor]
 			if ok {
@@ -75,26 +79,48 @@ func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 func (model HomeModel) View() string {
 
+	if !model.MainModel.IsReady() {
+		return modelStyle.
+			Width(model.MainModel.AvailableWidth()).
+			Height(model.MainModel.AvailableHeight()).
+			Render("booya")
+	}
+
+	text := strings.Builder{}
+
+	headerStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Align(lipgloss.Center, lipgloss.Center).
+		Padding(0, 1).
+		Width(
+			min(
+				50,
+				lipgloss.Width(model.HomeQuote)+2,
+			),
+		)
+
 	// Header
-	text := model.HomeQuote + "\n"
+	text.WriteString(headerStyle.Render(model.HomeQuote) + "\n")
 
 	// Iterate over our choices
 	for i, choice := range model.HomeChoices {
 
-		// Is the cursor pointing at this choice?
 		cursor := " " // no cursor
 		if model.HomeCursor == i {
 			cursor = ">" // cursor!
 		}
 
-		// Is this choice selected?
 		checked := " " // not selected
 		if _, ok := model.HomeSelected[i]; ok {
 			checked = "x" // selected!
 		}
 
-		// Render the row
-		text += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+		text.WriteString(
+			fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice),
+		)
 	}
-	return text
+	return modelStyle.
+		Width(model.MainModel.AvailableWidth()).
+		Height(model.MainModel.AvailableHeight()).
+		Render(text.String())
 }

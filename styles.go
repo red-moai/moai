@@ -42,6 +42,5 @@ var (
 	mainStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, true, true, true).
 			BorderForeground(highlightColor).
-			Align(lipgloss.Center).
 			Padding(1)
 )

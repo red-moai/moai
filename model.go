@@ -14,7 +14,7 @@ type Model struct {
 	// Globals
 	Error error
 
-	isReady        bool
+	isReady        *bool
 	terminalWidth  int
 	terminalHeight int
 
@@ -102,12 +102,14 @@ func (model Model) tabView() string {
 // Initialises the model to be ran by bubbletea
 func InitModel() Model {
 	activeTab := 0
+	isReady := false
 	model := Model{
 		ActiveTab: &activeTab,
 
 		Tabs: &[]string{
 			"Home",
 		},
+		isReady: &isReady,
 	}
 
 	isFound := false
@@ -166,6 +168,10 @@ func (model Model) Init() tea.Cmd {
 	return tea.SetWindowTitle("M O A I 🗿")
 }
 
+func (model Model) IsReady() bool {
+	return *model.isReady
+}
+
 // Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
@@ -177,6 +183,8 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 		model.terminalHeight = message.Height
 		model.terminalWidth = message.Width
+
+		*model.isReady = true
 
 	case tea.KeyMsg:
 		keypress := message.String()
@@ -262,7 +270,8 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 // Main function to render contents of the application.
 func (model Model) View() string {
 	text := strings.Builder{}
-	text.WriteString(model.tabView())
-	text.WriteString(mainStyle.Render(model.TabModels[*model.ActiveTab].View()))
+	//text.WriteString(model.tabView())
+	text.WriteString(model.TabModels[*model.ActiveTab].View()
+	)
 	return text.String()
 }

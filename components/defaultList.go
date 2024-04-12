@@ -1,6 +1,7 @@
 package components
 
 import (
+	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,10 +16,11 @@ type DefaultListModel struct {
 	List         list.Model
 	SelectedItem list.Item
 	CustomStyle  *lipgloss.Style
+	MainModel    external.MoaiModel
 }
 
 func InitDefaultList(items []list.Item, title string,
-	width int, height int, listStyle *list.Styles,
+	mainModel external.MoaiModel, listStyle *list.Styles,
 	delegateStyles *list.DefaultItemStyles,
 	keyBindings ...key.Binding) DefaultListModel {
 
@@ -26,10 +28,11 @@ func InitDefaultList(items []list.Item, title string,
 		List: list.New(
 			items,
 			list.NewDefaultDelegate(),
-			width,
-			height,
+			30,
+			30,
 		),
 		SelectedItem: nil,
+		MainModel:    mainModel,
 	}
 	model.List.Title = title
 	model.List.Help.ShowAll = false
@@ -75,5 +78,8 @@ func (model DefaultListModel) Update(message tea.Msg) (DefaultListModel, tea.Cmd
 }
 
 func (model DefaultListModel) View() string {
-	return model.List.View()
+	return lipgloss.NewStyle().
+		Render(model.List.View())
+
+	//return model.List.View()
 }

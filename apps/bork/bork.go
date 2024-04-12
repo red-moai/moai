@@ -45,8 +45,7 @@ func InitBork(mainModel external.MoaiModel) tea.Model {
 		ModelList: components.InitDefaultList(
 			borkEntries,
 			"bork bork",
-			30,
-			30,
+			mainModel,
 			nil,
 			nil,
 			borkListKeyBindAdd,

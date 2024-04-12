@@ -82,14 +82,14 @@ func InitNewTab(mainModel external.MoaiModel) NewTabModel {
 		ModelList: components.InitDefaultList(
 			AVAILABLE_APPS,
 			"Available apps",
-			mainModel.AvailableWidth(),
-			mainModel.AvailableHeight(),
+			mainModel,
 			func() *list.Styles {
 				styles := list.DefaultStyles()
 				styles.Title = styles.Title.
 					Foreground(lipgloss.Color("#7AA2F7")).
 					Background(lipgloss.NoColor{}).
 					Bold(true)
+
 				return &styles
 			}(),
 			func() *list.DefaultItemStyles {
@@ -125,8 +125,10 @@ func (model NewTabModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (model NewTabModel) View() string {
-	styles := lipgloss.NewStyle().
+	return lipgloss.NewStyle().
 		Width(model.mainModel.AvailableWidth()).
-		PaddingTop(1)
-	return styles.Render(model.ModelList.View())
+		Height(model.mainModel.AvailableHeight()).
+		Align(lipgloss.Center, lipgloss.Center).
+		//Background(lipgloss.Color("#00FF00")).
+		Render(model.ModelList.View())
 }

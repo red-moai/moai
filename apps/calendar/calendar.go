@@ -66,10 +66,12 @@ var (
 			Foreground(lipgloss.Color("#B4F9F8")).
 			Border(lipgloss.RoundedBorder()).
 			Padding(0, 1).
-			MarginBottom(1).
+			Margin(1, 0).
 			Bold(true)
 
-	modelStyle = lipgloss.NewStyle()
+	modelStyle = lipgloss.NewStyle().
+			Align(lipgloss.Center, lipgloss.Center).
+			Padding(1)
 )
 
 type CalendarModel struct {
@@ -80,6 +82,8 @@ type CalendarModel struct {
 	targetMonth  *time.Month
 	targetYear   *int
 	events       *components.DefaultListModel
+
+	MainModel external.MoaiModel
 }
 
 func getDefaultStyle() table.Styles {
@@ -92,7 +96,7 @@ func getActiveStyle() table.Styles {
 	return styles
 }
 
-func InitCalendar(_ external.MoaiModel) tea.Model {
+func InitCalendar(mainModel external.MoaiModel) tea.Model {
 	currentTime := time.Now()
 	targetMonth := currentTime.Month()
 	targetYear := currentTime.Year()
@@ -120,8 +124,7 @@ func InitCalendar(_ external.MoaiModel) tea.Model {
 	events := components.InitDefaultList(
 		fakeEventData,
 		"Events",
-		30,
-		15,
+		mainModel,
 		nil,
 		nil,
 	)
@@ -134,6 +137,7 @@ func InitCalendar(_ external.MoaiModel) tea.Model {
 		targetYear:   &targetYear,
 		events:       &events,
 		focusedIndex: &focusedIndex,
+		MainModel:    mainModel,
 	}
 
 	column := &(*model.calendar)[0]
@@ -192,6 +196,11 @@ func (model CalendarModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	model.currentTime = &currentTime
 
 	switch message := message.(type) {
+	case tea.WindowSizeMsg:
+		modelStyle = modelStyle.
+			Width(message.Width).
+			Height(message.Height)
+
 	case tea.KeyMsg:
 		switch message.String() {
 
@@ -328,8 +337,15 @@ func (model CalendarModel) View() string {
 	text.WriteString(model.prettyDateTime() + "\n\n")
 	text.WriteString(model.prettyTitle() + "\n")
 	text.WriteString(model.calendarView() + "\n")
-	text.WriteString(model.events.View() + "\n")
-	return modelStyle.Render(text.String())
+	eventStyle := lipgloss.NewStyle().
+		Width(model.MainModel.AvailableWidth() - 6)
+	text.WriteString(
+		eventStyle.Render(model.events.View()) + "\n")
+	return modelStyle.
+		Height(model.MainModel.AvailableHeight()).
+		Width(model.MainModel.AvailableWidth()).
+		Background(lipgloss.Color("#ff0000")).
+		Render(text.String())
 }
 
 // Returns the number of days before the 1st
