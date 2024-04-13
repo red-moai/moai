@@ -1,58 +1,49 @@
 package bork
 
 import (
-	"net/http"
-
-	"github.com/Genekkion/moai/components"
 	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type BorkModel struct {
-	client         http.Client
 	borkCategories []string
+	keymap         KeyMap
 
-	ModelList components.DefaultListModel
-	MainModel external.MoaiModel
+	list list.Model
 }
 
 var (
-	// Depends on modKey
-	borkListKeyBindAdd key.Binding
-
-	borkListKeyBindEscape = key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "exit"),
-	)
-
 	borkCategories = []string{
 		"ChatsTodo",
 		"PottySense",
 		"New category",
 	}
+
+	modelStyle = lipgloss.NewStyle().
+			Padding(1).
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("#CFC9C2"))
 )
 
 func InitBork(mainModel external.MoaiModel) tea.Model {
-	borkListKeyBindAdd = key.NewBinding(
-		key.WithKeys(mainModel.ModKey()+"a"),
-		key.WithHelp(mainModel.ModKey()+"a", "add new"),
-	)
-
 	model := BorkModel{
-		client: *http.DefaultClient,
-		ModelList: components.InitDefaultList(
+		list: list.New(
 			borkEntries,
-			"bork bork",
-			mainModel,
-			nil,
-			nil,
-			borkListKeyBindAdd,
-			borkListKeyBindEscape,
+			list.NewDefaultDelegate(),
+			30,
+			30,
 		),
+		keymap:         initKeyMap(mainModel.ModKey()),
 		borkCategories: borkCategories,
 	}
+	model.list.Title = "Bork Bork! 🐶"
+
+	model.updateDimensions(mainModel.GetLatestWindowMessage())
+	model.list.SetShowHelp(false)
+
 	return model
 }
 
@@ -60,14 +51,29 @@ func (model BorkModel) Init() tea.Cmd {
 	return nil
 }
 
+func (model *BorkModel) updateDimensions(message tea.Msg) {
+	switch message := message.(type) {
+	case tea.WindowSizeMsg:
+		newHeight := message.Height - 2
+		newWidth := message.Width - 2
+		modelStyle = modelStyle.
+			Height(newHeight).
+			Width(newWidth)
+		model.list.SetHeight(newHeight - 2)
+		model.list.SetWidth(newWidth - 2)
+
+	}
+}
+
 func (model BorkModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
-	case tea.KeyMsg:
-		if model.ModelList.List.FilterState() == list.Filtering {
-			break
-		}
+	case tea.WindowSizeMsg:
+		model.updateDimensions(message)
+		return model, nil
 
-		if key.Matches(message, borkListKeyBindAdd) {
+	case tea.KeyMsg:
+
+		if key.Matches(message, model.keymap.AddNew) {
 			borkFormModel := initBorkForm(&model)
 
 			return borkFormModel, nil
@@ -75,10 +81,10 @@ func (model BorkModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var command tea.Cmd
-	model.ModelList, command = model.ModelList.Update(message)
+	model.list, command = model.list.Update(message)
 	return model, command
 }
 
 func (model BorkModel) View() string {
-	return borkListStyle.Render(model.ModelList.View())
+	return modelStyle.Render(model.list.View())
 }

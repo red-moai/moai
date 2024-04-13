@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sort"
 	"time"
 
 	"github.com/Genekkion/moai/apps/home"
@@ -22,6 +23,10 @@ type Model struct {
 	menuSpawned bool
 
 	latestWindowMsg tea.Msg
+}
+
+func (model Model) GetLatestWindowMessage() tea.Msg {
+	return model.latestWindowMsg
 }
 
 // Initialises the model to be ran by bubbletea
@@ -57,7 +62,12 @@ func (model Model) Init() tea.Cmd {
 }
 
 func (model *Model) spawnMenu() {
-	model.PreviousTab = model.ActiveTab
+	model.tabs[model.ActiveTab].lastAccessed = time.Now()
+	sort.Sort(model.tabs[1:])
+	model.PreviousTab = 0
+	if model.ActiveTab != 0 {
+		model.PreviousTab = 1
+	}
 	model.ActiveTab = len(model.tabs)
 	model.tabs = append(model.tabs,
 		TabEntry{
@@ -109,6 +119,8 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	if command != nil {
 		tabMessage := command()
 		switch tabMessage := tabMessage.(type) {
+		case SetIndexMessage:
+			model.setActiveTab(tabMessage.index)
 		case MenuEntry:
 			model.switchTab(tabMessage)
 		case string:
@@ -128,6 +140,13 @@ func (model *Model) switchHome() {
 	model.menuSpawned = false
 	model.ActiveTab = 0
 	model.PreviousTab = 0
+}
+
+func (model *Model) setActiveTab(newIndex int) {
+	model.tabs = model.tabs[:len(model.tabs)-1]
+	model.ActiveTab = newIndex
+	model.menuSpawned = false
+	model.onHome = false
 }
 
 func (model *Model) switchTab(message MenuEntry) {

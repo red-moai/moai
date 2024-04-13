@@ -1,7 +1,6 @@
 package todo
 
 import (
-	"github.com/Genekkion/moai/components"
 	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,19 +11,19 @@ var (
 )
 
 type TodoModel struct {
-	list      components.DefaultListModel
+	// list      components.DefaultListModel
 	mainModel external.MoaiModel
 }
 
 func InitTodo(mainModel external.MoaiModel) tea.Model {
 	model := TodoModel{
-		list: components.InitDefaultList(
-			fakeTodoData,
-			"Todo List",
-			mainModel,
-			nil,
-			nil,
-		),
+		// list: components.InitDefaultList(
+		// 	fakeTodoData,
+		// 	"Todo List",
+		// 	mainModel,
+		// 	nil,
+		// 	nil,
+		// ),
 		mainModel: mainModel,
 	}
 
@@ -50,10 +49,11 @@ func (model TodoModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var command tea.Cmd
-	model.list, command = model.list.Update(message)
+	// model.list, command = model.list.Update(message)
 	return model, command
 }
 
 func (model TodoModel) View() string {
-	return model.list.View()
+	// return model.list.View()
+	return ""
 }

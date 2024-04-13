@@ -73,19 +73,19 @@ func (model TodoForm) Init() tea.Cmd {
 
 func (model TodoForm) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
-	if model.form.Get("completed") != nil {
-		deadline, _ := time.Parse("02-01-2006 15:04", model.form.GetString("deadline"))
+	// if model.form.Get("completed") != nil {
+		// deadline, _ := time.Parse("02-01-2006 15:04", model.form.GetString("deadline"))
 
-		command := model.parentModel.list.List.InsertItem(0,
-			TodoEntry{
-				title:       model.form.GetString("title"),
-				description: model.form.GetString("description"),
-				deadline:    deadline,
-			},
-		)
+		// command := model.parentModel.list.List.InsertItem(0,
+		// 	TodoEntry{
+		// 		title:       model.form.GetString("title"),
+		// 		description: model.form.GetString("description"),
+		// 		deadline:    deadline,
+		// 	},
+		// )
 
-		return model.parentModel, command
-	}
+		// return model.parentModel, command
+	// }
 
 	var command tea.Cmd
 	updatedForm, command := model.form.Update(message)

@@ -99,20 +99,20 @@ func (model BorkFormModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	commands := []tea.Cmd{}
 
 	if model.form.Get("completed") != nil {
-		model.parentModel.ModelList.List.ResetSelected()
-		model.parentModel.ModelList.SelectedItem = nil
-		commands = append(commands,
-			model.parentModel.ModelList.List.InsertItem(
-				0,
-				BorkEntry{
-					title:       model.form.GetString("title"),
-					category:    model.form.GetString("category"),
-					description: model.form.GetString("description"),
-					method:      model.form.GetString("method"),
-					url:         model.form.GetString("url"),
-				},
-			),
-		)
+		// model.parentModel.ModelList.List.ResetSelected()
+		// model.parentModel.ModelList.SelectedItem = nil
+		// commands = append(commands,
+		// 	model.parentModel.ModelList.List.InsertItem(
+		// 		0,
+		// 		BorkEntry{
+		// 			title:       model.form.GetString("title"),
+		// 			category:    model.form.GetString("category"),
+		// 			description: model.form.GetString("description"),
+		// 			method:      model.form.GetString("method"),
+		// 			url:         model.form.GetString("url"),
+		// 		},
+		// 	),
+		// )
 		return model.parentModel, tea.Batch(commands...)
 	}
 
@@ -120,8 +120,8 @@ func (model BorkFormModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch message.Type {
 		case tea.KeyEscape:
-			model.parentModel.ModelList.List.ResetSelected()
-			model.parentModel.ModelList.SelectedItem = nil
+			// model.parentModel.ModelList.List.ResetSelected()
+			// model.parentModel.ModelList.SelectedItem = nil
 			return model.parentModel, tea.Batch(commands...)
 		}
 	}

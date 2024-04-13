@@ -5,37 +5,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Genekkion/moai/components"
 	"github.com/Genekkion/moai/external"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	COLUMN_WIDTH = 4
-	DAYS_OF_WEEK = []table.Column{
-		{
-			Title: "Mon", Width: COLUMN_WIDTH,
-		},
-		{
-			Title: "Tue", Width: COLUMN_WIDTH,
-		},
-		{
-			Title: "Wed", Width: COLUMN_WIDTH,
-		},
-		{
-			Title: "Thu", Width: COLUMN_WIDTH,
-		},
-		{
-			Title: "Fri", Width: COLUMN_WIDTH,
-		},
-		{
-			Title: "Sat", Width: COLUMN_WIDTH,
-		},
-		{
-			Title: "Sun", Width: COLUMN_WIDTH,
-		},
+	INITIAL_COLUMN_WIDTH = 4
+	DAYS_OF_WEEK         = []table.Column{
+		{Title: "Mon", Width: INITIAL_COLUMN_WIDTH},
+		{Title: "Tue", Width: INITIAL_COLUMN_WIDTH},
+		{Title: "Wed", Width: INITIAL_COLUMN_WIDTH},
+		{Title: "Thu", Width: INITIAL_COLUMN_WIDTH},
+		{Title: "Fri", Width: INITIAL_COLUMN_WIDTH},
+		{Title: "Sat", Width: INITIAL_COLUMN_WIDTH},
+		{Title: "Sun", Width: INITIAL_COLUMN_WIDTH},
 	}
 
 	styles      = table.DefaultStyles()
@@ -75,13 +61,13 @@ var (
 )
 
 type CalendarModel struct {
-	currentTime *time.Time
+	currentTime time.Time
 
-	focusedIndex *int
-	calendar     *[]table.Model
-	targetMonth  *time.Month
-	targetYear   *int
-	events       *components.DefaultListModel
+	focusedIndex int
+	calendar     []table.Model
+	targetMonth  time.Month
+	targetYear   int
+	events       list.Model
 
 	MainModel external.MoaiModel
 }
@@ -96,14 +82,9 @@ func getActiveStyle() table.Styles {
 	return styles
 }
 
-func InitCalendar(mainModel external.MoaiModel) tea.Model{
-	currentTime := time.Now()
-	targetMonth := currentTime.Month()
-	targetYear := currentTime.Year()
-
+func InitCalendar(mainModel external.MoaiModel) tea.Model {
 	styles.Header = headerStyle
 	styles.Cell = cellStyle
-
 	defaultStyle := getDefaultStyle()
 
 	calendar := make([]table.Model, 7)
@@ -121,28 +102,25 @@ func InitCalendar(mainModel external.MoaiModel) tea.Model{
 
 	}
 
-	events := components.InitDefaultList(
-		fakeEventData,
-		"Events",
-		mainModel,
-		nil,
-		nil,
-	)
-
+	currentTime := time.Now()
 	focusedIndex := 0
 	model := CalendarModel{
-		currentTime:  &currentTime,
-		calendar:     &calendar,
-		targetMonth:  &targetMonth,
-		targetYear:   &targetYear,
-		events:       &events,
-		focusedIndex: &focusedIndex,
+		currentTime: currentTime,
+		calendar:    calendar,
+		targetMonth: currentTime.Month(),
+		targetYear:  currentTime.Year(),
+		events: list.New(
+			fakeEventData,
+			list.NewDefaultDelegate(),
+			30,
+			30,
+		),
+		focusedIndex: focusedIndex,
 		MainModel:    mainModel,
 	}
 
-	column := &(*model.calendar)[0]
-	column.SetStyles(getActiveStyle())
-	column.Focus()
+	model.calendar[0].SetStyles(getActiveStyle())
+	model.calendar[0].Focus()
 
 	return model
 }
@@ -164,7 +142,7 @@ func (model CalendarModel) Init() tea.Cmd {
 
 // Returns the row number of the current column
 func (model CalendarModel) disableCurrent() int {
-	column := &(*model.calendar)[*model.focusedIndex]
+	column := model.calendar[model.focusedIndex]
 	column.SetStyles(getDefaultStyle())
 	column.Blur()
 	return column.Cursor()
@@ -173,7 +151,7 @@ func (model CalendarModel) disableCurrent() int {
 // rowNum should be the row number of the previous
 // column
 func (model CalendarModel) enableCurrent(rowNum int) {
-	column := &(*model.calendar)[*model.focusedIndex]
+	column := model.calendar[model.focusedIndex]
 	column.SetStyles(getActiveStyle())
 	column.Focus()
 	column.SetCursor(rowNum)
@@ -181,19 +159,18 @@ func (model CalendarModel) enableCurrent(rowNum int) {
 
 func (model CalendarModel) MoveLeft() {
 	rowNum := model.disableCurrent()
-	*model.focusedIndex--
+	model.focusedIndex--
 	model.enableCurrent(rowNum)
 }
 
 func (model CalendarModel) MoveRight() {
 	rowNum := model.disableCurrent()
-	*model.focusedIndex++
+	model.focusedIndex++
 	model.enableCurrent(rowNum)
 }
 
 func (model CalendarModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
-	currentTime := time.Now()
-	model.currentTime = &currentTime
+	model.currentTime = time.Now()
 
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
@@ -205,60 +182,60 @@ func (model CalendarModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		switch message.String() {
 
 		case "alt+r":
-			*model.targetMonth = model.currentTime.Month()
-			*model.targetYear = model.currentTime.Year()
+			model.targetMonth = model.currentTime.Month()
+			model.targetYear = model.currentTime.Year()
 
 		case "left":
-			if *model.focusedIndex == 0 {
-				*model.targetMonth--
-				if *model.targetMonth == 0 {
-					*model.targetMonth = 12
-					*model.targetYear--
+			if model.focusedIndex == 0 {
+				model.targetMonth--
+				if model.targetMonth == 0 {
+					model.targetMonth = 12
+					model.targetYear--
 				}
 
 				rowNum := model.disableCurrent()
-				*model.focusedIndex = 6
+				model.focusedIndex = 6
 				model.enableCurrent(rowNum)
 
-			} else if *model.focusedIndex > 0 {
+			} else if model.focusedIndex > 0 {
 				model.MoveLeft()
 			}
 
 		case "right":
-			if *model.focusedIndex == 6 {
-				*model.targetMonth++
-				if *model.targetMonth == 13 {
-					*model.targetMonth = 1
-					*model.targetYear++
+			if model.focusedIndex == 6 {
+				model.targetMonth++
+				if model.targetMonth == 13 {
+					model.targetMonth = 1
+					model.targetYear++
 				}
 
 				rowNum := model.disableCurrent()
-				*model.focusedIndex = 0
+				model.focusedIndex = 0
 				model.enableCurrent(rowNum)
 
-			} else if *model.focusedIndex >= 0 && *model.focusedIndex < 6 {
+			} else if model.focusedIndex >= 0 && model.focusedIndex < 6 {
 				model.MoveRight()
 			}
 
 		case "tab":
-			if *model.focusedIndex == -1 {
-				*model.focusedIndex = 0
-				(*model.calendar)[*model.focusedIndex].SetStyles(getActiveStyle())
-				(*model.calendar)[*model.focusedIndex].Focus()
+			if model.focusedIndex == -1 {
+				model.focusedIndex = 0
+				model.calendar[model.focusedIndex].SetStyles(getActiveStyle())
+				model.calendar[model.focusedIndex].Focus()
 			} else {
-				(*model.calendar)[*model.focusedIndex].SetStyles(getDefaultStyle())
-				(*model.calendar)[*model.focusedIndex].Blur()
-				*model.focusedIndex = -1
+				model.calendar[model.focusedIndex].SetStyles(getDefaultStyle())
+				model.calendar[model.focusedIndex].Blur()
+				model.focusedIndex = -1
 			}
 		}
 	}
 
 	var command tea.Cmd
-	if *model.focusedIndex == -1 {
-		*model.events, command = model.events.Update(message)
+	if model.focusedIndex == -1 {
+		model.events, command = model.events.Update(message)
 	} else {
-		(*model.calendar)[*model.focusedIndex],
-			command = (*model.calendar)[*model.focusedIndex].Update(message)
+		model.calendar[model.focusedIndex],
+			command = model.calendar[model.focusedIndex].Update(message)
 	}
 
 	return model, command
@@ -268,14 +245,14 @@ func (model CalendarModel) prettyTitle() string {
 	return titleStyle.Render(
 		fmt.Sprintf("%s %d",
 			model.targetMonth.String(),
-			*model.targetYear,
+			model.targetYear,
 		),
 	)
 }
 
 func (model CalendarModel) thisMonth() bool {
-	return model.currentTime.Month() == *model.targetMonth &&
-		model.currentTime.Year() == *model.targetYear
+	return model.currentTime.Month() == model.targetMonth &&
+		model.currentTime.Year() == model.targetYear
 }
 
 func (model CalendarModel) isToday(day int) bool {
@@ -319,9 +296,9 @@ func (model CalendarModel) calendarView() string {
 				table.Row{calendarArray[j][i]},
 			)
 		}
-		(*model.calendar)[i].SetRows(rows)
+		(model.calendar)[i].SetRows(rows)
 		calendarViews = append(calendarViews,
-			(*model.calendar)[i].View(),
+			(model.calendar)[i].View(),
 		)
 	}
 	text := strings.Builder{}
@@ -340,19 +317,17 @@ func (model CalendarModel) View() string {
 	eventStyle := lipgloss.NewStyle()
 	text.WriteString(
 		eventStyle.Render(model.events.View()) + "\n")
-	return modelStyle.
-		Background(lipgloss.Color("#ff0000")).
-		Render(text.String())
+	return modelStyle.Render(text.String())
 }
 
 // Returns the number of days before the 1st
 // day in the month. Assumes calendar starts
 // from Monday. Return value [0:6]
-func (model *CalendarModel) getStartOffset() int {
+func (model CalendarModel) getStartOffset() int {
 	return (int(
 		time.Date(
-			*model.targetYear,
-			*model.targetMonth,
+			model.targetYear,
+			model.targetMonth,
 			1, 0, 0, 0, 0,
 			model.currentTime.Location(),
 		).Weekday(),
@@ -360,12 +335,10 @@ func (model *CalendarModel) getStartOffset() int {
 }
 
 func (model CalendarModel) getNumDays() int {
-	month := *model.targetMonth
-	year := *model.targetYear
-
-	switch month {
+	switch model.targetMonth {
 	case time.February:
-		if year%4 == 0 && (year%10 != 0 || year%400 == 0) {
+		if model.targetYear%4 == 0 &&
+			(model.targetYear%10 != 0 || model.targetYear%400 == 0) {
 			return 29
 		}
 		return 28

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"sort"
-
 	"github.com/Genekkion/moai/apps/bork"
 	"github.com/Genekkion/moai/apps/calculator"
 	"github.com/Genekkion/moai/apps/calendar"
@@ -56,9 +54,6 @@ type MenuModel struct {
 	list         list.Model
 	table        table.Model
 	tableColumns []table.Column
-	listStyle    lipgloss.Style
-	modelStyle   lipgloss.Style
-	helpStyle    lipgloss.Style
 	keymap       MenuKeyMap
 	listFocused  bool
 	showHelp     bool
@@ -89,7 +84,6 @@ func extractTabs(entries TabEntries) []table.Row {
 	}
 	rows := make([]table.Row, numEntries)
 	validEntries := entries[1:]
-	sort.Sort(validEntries)
 	for i := range numEntries {
 		rows[i] = []string{
 			validEntries[i].title,
@@ -127,13 +121,6 @@ func InitMenu(mainModel Model) tea.Model {
 		),
 		tableColumns: recentlyUsedColumns,
 
-		modelStyle: lipgloss.NewStyle().
-			Padding(1).
-			AlignHorizontal(lipgloss.Center).
-			Border(lipgloss.RoundedBorder()),
-		listStyle: lipgloss.NewStyle(),
-		helpStyle: lipgloss.NewStyle(),
-
 		keymap:      initMenuKeyMap(mainModel.ModKey()),
 		showHelp:    true,
 		listFocused: true,
@@ -155,13 +142,22 @@ func (newTabModel MenuModel) Init() tea.Cmd {
 	return nil
 }
 
+var (
+	menuModelStyle = lipgloss.NewStyle().
+			Padding(1).
+			AlignHorizontal(lipgloss.Center).
+			Border(lipgloss.RoundedBorder())
+	menuWidgetStyle = lipgloss.NewStyle()
+	menuHelpStyle   = lipgloss.NewStyle()
+)
+
 func (model *MenuModel) updateDimensions(message tea.Msg) {
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
-		model.modelStyle = model.modelStyle.
+		menuModelStyle = menuModelStyle.
 			Height(message.Height - 2).
 			Width(message.Width - 2)
-		model.helpStyle = model.helpStyle.
+		menuHelpStyle = menuHelpStyle.
 			Width(message.Width - 4)
 
 		widgetHeight := message.Height - 6 -
@@ -180,11 +176,10 @@ func (model *MenuModel) updateDimensions(message tea.Msg) {
 		}
 		model.table.SetColumns(newColumns)
 
-		model.listStyle = model.listStyle.
+		menuWidgetStyle = menuWidgetStyle.
 			Height(widgetHeight - 14).
 			Width(widgetWidth + 1)
 	}
-
 }
 
 func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
@@ -233,29 +228,45 @@ func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 		model.list, command = model.list.Update(message)
 	} else {
+		switch message := message.(type) {
+
+		case tea.KeyMsg:
+			switch message.String() {
+			case "enter":
+				return model, func() tea.Msg {
+					return SetIndexMessage{
+						index: model.table.Cursor() + 1,
+					}
+				}
+			}
+		}
 		model.table, command = model.table.Update(message)
 	}
 
 	return model, command
 }
 
+type SetIndexMessage struct {
+	index int
+}
+
 func (model MenuModel) listView() string {
-	return model.listStyle.Render(model.list.View())
+	return menuWidgetStyle.Render(model.list.View())
 }
 
 func (model MenuModel) tableView() string {
-	return model.listStyle.Render(model.table.View())
+	return menuWidgetStyle.Render(model.table.View())
 }
 
 func (model MenuModel) helpView() string {
-	return model.helpStyle.Render(
+	return menuHelpStyle.Render(
 		model.list.Help.View(model.keymap),
 	)
 }
 
 func (model MenuModel) View() string {
 	gap := ""
-	if model.modelStyle.GetWidth()%2 != 0 {
+	if menuModelStyle.GetWidth()%2 != 0 {
 		gap = " "
 	}
 	text := lipgloss.JoinHorizontal(
@@ -271,5 +282,5 @@ func (model MenuModel) View() string {
 			model.helpView(),
 		)
 	}
-	return model.modelStyle.Render(text)
+	return menuModelStyle.Render(text)
 }

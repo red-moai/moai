@@ -9,7 +9,7 @@ type GlobalKeyMap struct {
 }
 
 func initGlobalKeyMap(modkey string) GlobalKeyMap {
-	keys := GlobalKeyMap{
+	keymap := GlobalKeyMap{
 		Quit: key.NewBinding(
 			key.WithKeys("ctrl+c"),
 			key.WithHelp("ctrl+c", "quit"),
@@ -20,7 +20,7 @@ func initGlobalKeyMap(modkey string) GlobalKeyMap {
 		),
 	}
 
-	return keys
+	return keymap
 }
 
 type MenuKeyMap struct {
@@ -31,7 +31,7 @@ type MenuKeyMap struct {
 }
 
 func initMenuKeyMap(modkey string) MenuKeyMap {
-	keys := MenuKeyMap{
+	keymap := MenuKeyMap{
 		Exit: key.NewBinding(
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "go back"),
@@ -50,7 +50,7 @@ func initMenuKeyMap(modkey string) MenuKeyMap {
 		),
 	}
 
-	return keys
+	return keymap
 }
 
 func (keymap MenuKeyMap) ShortHelp() []key.Binding {
