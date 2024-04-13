@@ -17,8 +17,8 @@ type Model struct {
 	Tabs        *[]string
 	TabModels   []tea.Model
 	ActiveTab   *int // 0 index
-	keyMap      KeyMap
-	HomeModel   home.HomeModel
+	keyMap      GlobalKeyMap
+	homeModel   home.HomeModel
 	menuModel   MenuModel
 	onHome      bool
 	menuSpawned bool
@@ -56,9 +56,9 @@ func InitModel() Model {
 	}
 
 	model.setModkey()
-	model.HomeModel = home.InitHome(model).(home.HomeModel)
+	model.homeModel = home.InitHome(model).(home.HomeModel)
 	model.menuModel = InitMenu(model)
-	model.keyMap = initKeyMap(model.modkey)
+	model.keyMap = initGlobalKeyMap(model.modkey)
 
 	return model
 }
@@ -90,17 +90,20 @@ func (model *Model) setOnHome(onHome bool) {
 func (model Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.SetWindowTitle("M O A I 🗿"),
-		model.HomeModel.GetSpinner().Tick,
+		model.homeModel.GetSpinner().Tick,
 	)
 }
-
-var (
-	backToHome = true
-)
 
 // Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
+	case tea.WindowSizeMsg:
+		var modelPointer tea.Model
+		modelPointer, _ = model.menuModel.Update(message)
+		model.menuModel = modelPointer.(MenuModel)
+		modelPointer, _ = model.homeModel.Update(message)
+		model.homeModel = modelPointer.(home.HomeModel)
+
 	case tea.KeyMsg:
 		keypress := message.String()
 
@@ -112,7 +115,6 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(message, model.keyMap.Menu):
 			model.toggleMenu()
-			backToHome = !model.menuSpawned && model.onHome
 		}
 	}
 
@@ -125,18 +127,12 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 	case model.onHome:
 		var homeModel tea.Model
-		homeModel, command = model.HomeModel.Update(message)
-		model.HomeModel = homeModel.(home.HomeModel)
-		if backToHome {
-			return model, tea.Batch(command, model.HomeModel.GetSpinner().Tick)
-		}
-		return model, command
+		homeModel, command = model.homeModel.Update(message)
+		model.homeModel = homeModel.(home.HomeModel)
+
+		return model, tea.Batch(command, model.homeModel.GetSpinner().Tick)
 	}
 
-	/*
-		model.TabModels[*model.ActiveTab], command =
-			model.TabModels[*model.ActiveTab].Update(message)
-	*/
 	return model, command
 
 }
@@ -146,7 +142,7 @@ func (model Model) View() string {
 	if model.menuSpawned {
 		return model.menuModel.View()
 	} else if model.onHome {
-		return model.HomeModel.View()
+		return model.homeModel.View()
 	}
 	return "booya"
 }

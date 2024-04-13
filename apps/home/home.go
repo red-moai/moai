@@ -79,7 +79,7 @@ func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
 		modelStyle = modelStyle.
-			Width(message.Width - 4).
+			Width(message.Width - 2).
 			Height(message.Height - 2)
 
 		model.helpModel.Width = message.Width
