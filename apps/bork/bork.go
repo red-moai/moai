@@ -34,7 +34,7 @@ var (
 	}
 )
 
-func InitBork(mainModel external.MoaiModel) external.MoaiApp {
+func InitBork(mainModel external.MoaiModel) tea.Model {
 	borkListKeyBindAdd = key.NewBinding(
 		key.WithKeys(mainModel.ModKey()+"a"),
 		key.WithHelp(mainModel.ModKey()+"a", "add new"),

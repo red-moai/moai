@@ -96,7 +96,7 @@ func getActiveStyle() table.Styles {
 	return styles
 }
 
-func InitCalendar(mainModel external.MoaiModel) external.MoaiApp{
+func InitCalendar(mainModel external.MoaiModel) tea.Model{
 	currentTime := time.Now()
 	targetMonth := currentTime.Month()
 	targetYear := currentTime.Year()

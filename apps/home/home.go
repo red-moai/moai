@@ -45,14 +45,14 @@ type HomeModel struct {
 	keyMap      KeyMap
 	showHelp    bool
 
-	MainModel external.MoaiModel
+	MainModel *external.MoaiModel
 }
 
 func (model HomeModel) GetSpinner() spinner.Model {
 	return model.spinner
 }
 
-func InitHome(mainModel external.MoaiModel) external.MoaiApp {
+func InitHome(mainModel external.MoaiModel) tea.Model {
 	model := HomeModel{
 		quote: homeQuotes[rand.Intn(len(homeQuotes))],
 		spinner: spinner.New(
@@ -61,7 +61,7 @@ func InitHome(mainModel external.MoaiModel) external.MoaiApp {
 		currentTime: time.Now(),
 		helpModel:   help.New(),
 		keyMap:      initKeyMap(mainModel.ModKey()),
-		MainModel:   mainModel,
+		MainModel:   &mainModel,
 	}
 
 	return model

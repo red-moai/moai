@@ -2,9 +2,10 @@ package main
 
 import (
 	"github.com/Genekkion/moai/apps/bork"
-	"github.com/Genekkion/moai/apps/calculator"
+	_ "github.com/Genekkion/moai/apps/calculator"
 	"github.com/Genekkion/moai/apps/calendar"
-	"github.com/Genekkion/moai/apps/diary"
+	_ "github.com/Genekkion/moai/apps/calendar"
+	_ "github.com/Genekkion/moai/apps/diary"
 	_ "github.com/Genekkion/moai/apps/gpt"
 	_ "github.com/Genekkion/moai/apps/todo"
 	"github.com/Genekkion/moai/external"
@@ -14,8 +15,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
-
-type ModelInit func(external.MoaiModel) external.MoaiApp
 
 var (
 	MOAI_APPS = []list.Item{
@@ -29,27 +28,27 @@ var (
 			description: "Track your life",
 			initialiser: calendar.InitCalendar,
 		},
-		MenuEntry{
-			title:       "Calculator",
-			description: "A simple calculator",
-			initialiser: calculator.InitCalculator,
-		},
-		MenuEntry{
-			title:       "Diary",
-			description: "Your personal diary",
-			initialiser: diary.InitDiary,
-		},
 		/*
 			MenuEntry{
-				title:       "GPT",
-				description: "Access OpenAI's models",
-				initialiser: gpt.InitGPT,
+				title:       "Calculator",
+				description: "A simple calculator",
+				initialiser: calculator.InitCalculator,
 			},
 			MenuEntry{
-				title:       "Todo",
-				description: "A simple todo list",
-				initialiser: todo.InitTodo,
+				title:       "Diary",
+				description: "Your personal diary",
+				initialiser: diary.InitDiary,
 			},
+				MenuEntry{
+					title:       "GPT",
+					description: "Access OpenAI's models",
+					initialiser: gpt.InitGPT,
+				},
+				MenuEntry{
+					title:       "Todo",
+					description: "A simple todo list",
+					initialiser: todo.InitTodo,
+				},
 		*/
 	}
 
@@ -60,10 +59,6 @@ var (
 )
 
 type MenuModel struct {
-	tabs      []string
-	tabModels []external.MoaiApp
-	tabIndex  int
-
 	list         list.Model
 	table        table.Model
 	tableColumns []table.Column
@@ -76,6 +71,8 @@ type MenuModel struct {
 
 	mainModel *Model
 }
+
+type ModelInit func(external.MoaiModel) tea.Model
 
 type MenuEntry struct {
 	title       string
@@ -93,7 +90,7 @@ func (menuEntry MenuEntry) FilterValue() string {
 	return menuEntry.title + " " + menuEntry.description
 }
 
-func InitMenu(mainModel *Model) external.MoaiApp {
+func InitMenu(mainModel *Model) tea.Model {
 	recentlyUsedColumns := []table.Column{
 		{Title: "Application", Width: 15},
 		{Title: "Last used", Width: 10},
@@ -107,9 +104,6 @@ func InitMenu(mainModel *Model) external.MoaiApp {
 		Bold(true)
 
 	model := MenuModel{
-		tabs:      []string{},
-		tabModels: []external.MoaiApp{},
-		tabIndex:  -1,
 
 		list: list.New(
 			MOAI_APPS,
@@ -146,6 +140,7 @@ func InitMenu(mainModel *Model) external.MoaiApp {
 	model.list.KeyMap.CloseFullHelp.Unbind()
 
 	model.table.GotoTop()
+	model.updateDimensions(mainModel.latestWindowMsg)
 
 	return model
 }
@@ -154,7 +149,7 @@ func (newTabModel MenuModel) Init() tea.Cmd {
 	return nil
 }
 
-func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+func (model *MenuModel) updateDimensions(message tea.Msg) {
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
 		model.modelStyle = model.modelStyle.
@@ -183,12 +178,19 @@ func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		model.listStyle = model.listStyle.
 			Height(widgetHeight - 14).
 			Width(widgetWidth + 1)
+	}
+
+}
+
+func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+	switch message := message.(type) {
+	case tea.WindowSizeMsg:
+		model.updateDimensions(message)
 
 		return model, nil
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(message, model.keymap.Exit):
-			(*model.mainModel).toggleMenu()
 			return model, nil
 		case key.Matches(message, model.keymap.Help):
 			model.showHelp = !model.showHelp
@@ -211,21 +213,11 @@ func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch message.String() {
 			case "enter":
-				application := model.list.SelectedItem().(MenuEntry)
-				moaiApp := application.initialiser(*model.mainModel)
+				//model.mainModel.p
 
-				(*model.mainModel).menuSpawned = false
-				(*model.mainModel).onHome = false
-				(*model.mainModel).CurrentModel = &moaiApp
-				(*model.mainModel).PrevModel = nil
-
-				/*
-					model.tabs = append(model.tabs, application.title)
-					model.tabModels = append(model.tabModels, moaiApp)
-					model.tabIndex = len(model.tabs) - 1
-				*/
-
-				return moaiApp, nil
+				return model, func() tea.Msg {
+					return model.list.SelectedItem().(MenuEntry)
+				}
 			}
 		}
 

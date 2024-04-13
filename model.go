@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/Genekkion/moai/apps/home"
-	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -14,14 +13,16 @@ type Model struct {
 	Error  error
 	modkey string
 
-	CurrentModel *external.MoaiApp
-	PrevModel    *external.MoaiApp
-	ActiveTab    int // 0 index
-	keyMap       GlobalKeyMap
-	homeModel    external.MoaiApp
-	menuModel    external.MoaiApp
-	onHome       bool
-	menuSpawned  bool
+	ActiveTab   int // 0 index
+	PreviousTab int
+	keyMap      GlobalKeyMap
+	onHome      bool
+	menuSpawned bool
+
+	latestWindowMsg tea.Msg
+
+	tabs      []string
+	tabModels []tea.Model
 }
 
 var (
@@ -53,30 +54,19 @@ func InitModel() Model {
 		onHome:      true,
 		menuSpawned: false,
 		ActiveTab:   0,
+		PreviousTab: 0,
 	}
 
 	model.setModkey()
-	model.homeModel = home.InitHome(model).(home.HomeModel)
-	model.menuModel = InitMenu(&model)
 	model.keyMap = initGlobalKeyMap(model.modkey)
-
-	model.CurrentModel = &model.homeModel
-	model.PrevModel = nil
+	model.tabs = []string{
+		"Home",
+	}
+	model.tabModels = []tea.Model{
+		home.InitHome(&model).(home.HomeModel),
+	}
 
 	return model
-}
-
-func (model *Model) toggleMenu() {
-	if model.menuSpawned {
-		// If menu is visible, then go back to previous screen
-		model.CurrentModel = model.PrevModel
-		model.PrevModel = nil
-	} else {
-		// Else spawn a menu
-		model.PrevModel = model.CurrentModel
-		model.CurrentModel = &model.menuModel
-	}
-	model.menuSpawned = !model.menuSpawned
 }
 
 func (model Model) ModKey() string {
@@ -86,19 +76,29 @@ func (model Model) ModKey() string {
 func (model Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.SetWindowTitle("M O A I 🗿"),
-		model.homeModel.Init(),
+		model.tabModels[0].Init(),
 	)
+}
+
+func (model *Model) spawnMenu() {
+	model.tabModels = append(model.tabModels, InitMenu(model))
+	model.PreviousTab = model.ActiveTab
+	model.ActiveTab = len(model.tabModels) - 1
+	model.menuSpawned = true
+}
+
+func (model *Model) switchBack() {
+	model.ActiveTab = model.PreviousTab
+	model.menuSpawned = false
 }
 
 // Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
-		var modelPointer tea.Model
-		modelPointer, _ = model.menuModel.Update(message)
-		model.menuModel = modelPointer.(MenuModel)
-		modelPointer, _ = model.homeModel.Update(message)
-		model.homeModel = modelPointer.(home.HomeModel)
+		model.tabModels[0], _ = model.tabModels[0].Update(message)
+
+		model.latestWindowMsg = message
 
 	case tea.KeyMsg:
 		keypress := message.String()
@@ -110,25 +110,50 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(message, model.keyMap.Menu):
-			model.toggleMenu()
+			if !model.menuSpawned {
+				//model.spawnMenu()
+				model.tabModels = append(model.tabModels, InitMenu(&model))
+				model.PreviousTab = model.ActiveTab
+				model.ActiveTab = len(model.tabModels) - 1
+				model.menuSpawned = true
 
-			if model.onHome {
-				return model, model.homeModel.Init()
+				return model, nil
 			}
 
+			//model.switchBack()
+			model.ActiveTab = model.PreviousTab
+			model.menuSpawned = false
+
+			if model.ActiveTab == 0 {
+				return model, model.tabModels[0].Init()
+			}
 			return model, nil
 		}
 	}
 
-	currentModel, command := (*model.CurrentModel).Update(message)
-	moaiApp := currentModel.(external.MoaiApp)
-	model.CurrentModel = &moaiApp
+	var command tea.Cmd
+	model.tabModels[model.ActiveTab], command =
+		model.tabModels[model.ActiveTab].Update(message)
+
+	if command != nil {
+		tabMessage := command()
+		if tabMessage, ok := tabMessage.(MenuEntry); ok {
+			model.switchTab(tabMessage.title, tabMessage.initialiser)
+		}
+	}
 
 	return model, command
 
 }
 
+func (model *Model) switchTab(title string, initialiser ModelInit) {
+	model.tabs = append(model.tabs, title)
+	moaiApp := initialiser(model)
+	model.tabModels[model.ActiveTab] = moaiApp
+	model.menuSpawned = false
+}
+
 // Main function to render contents of the application.
 func (model Model) View() string {
-	return (*model.CurrentModel).View()
+	return model.tabModels[model.ActiveTab].View()
 }

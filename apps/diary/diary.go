@@ -42,7 +42,7 @@ func mockDiaryData() []Diary {
 	}
 }
 
-func InitDiary(_ external.MoaiModel) external.MoaiApp{
+func InitDiary(_ external.MoaiModel) tea.Model {
 	model := DiaryModel{
 		SearchInput:   textinput.New(),
 		SearchDisplay: "",
