@@ -1,7 +1,7 @@
 package main
 
 import (
-	"os"
+	"time"
 
 	"github.com/Genekkion/moai/apps/home"
 	"github.com/charmbracelet/bubbles/key"
@@ -13,39 +13,15 @@ type Model struct {
 	Error  error
 	modkey string
 
-	ActiveTab   int // 0 index
+	ActiveTab   int
 	PreviousTab int
+	tabs        TabEntries
+
 	keyMap      GlobalKeyMap
 	onHome      bool
 	menuSpawned bool
 
 	latestWindowMsg tea.Msg
-
-	tabs      []string
-	tabModels []tea.Model
-}
-
-var (
-	VALID_MOD_KEYS = []string{
-		"alt",
-	}
-)
-
-func (model *Model) setModkey() {
-	modkeyFound := false
-	MODKEY := os.Getenv("MODKEY")
-	for _, modKey := range VALID_MOD_KEYS {
-		if MODKEY == modKey {
-			modkeyFound = true
-			break
-		}
-	}
-	if !modkeyFound {
-		MODKEY = "alt"
-	}
-	MODKEY += "+"
-
-	model.modkey = MODKEY
 }
 
 // Initialises the model to be ran by bubbletea
@@ -55,15 +31,15 @@ func InitModel() Model {
 		menuSpawned: false,
 		ActiveTab:   0,
 		PreviousTab: 0,
+		modkey:      getModkey(),
 	}
 
-	model.setModkey()
 	model.keyMap = initGlobalKeyMap(model.modkey)
-	model.tabs = []string{
-		"Home",
-	}
-	model.tabModels = []tea.Model{
-		home.InitHome(&model).(home.HomeModel),
+	model.tabs = TabEntries{
+		{
+			title: "Home",
+			model: home.InitHome(&model).(home.HomeModel),
+		},
 	}
 
 	return model
@@ -76,27 +52,27 @@ func (model Model) ModKey() string {
 func (model Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.SetWindowTitle("M O A I 🗿"),
-		model.tabModels[0].Init(),
+		model.tabs[0].model.Init(),
 	)
 }
 
 func (model *Model) spawnMenu() {
-	model.tabModels = append(model.tabModels, InitMenu(model))
 	model.PreviousTab = model.ActiveTab
-	model.ActiveTab = len(model.tabModels) - 1
+	model.ActiveTab = len(model.tabs)
+	model.tabs = append(model.tabs,
+		TabEntry{
+			title: "New Tab",
+			model: InitMenu(*model),
+		},
+	)
 	model.menuSpawned = true
-}
-
-func (model *Model) switchBack() {
-	model.ActiveTab = model.PreviousTab
-	model.menuSpawned = false
 }
 
 // Main function to update contents of application.
 func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
-		model.tabModels[0], _ = model.tabModels[0].Update(message)
+		model.tabs[0].model, _ = model.tabs[0].model.Update(message)
 
 		model.latestWindowMsg = message
 
@@ -111,34 +87,35 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(message, model.keyMap.Menu):
 			if !model.menuSpawned {
-				//model.spawnMenu()
-				model.tabModels = append(model.tabModels, InitMenu(&model))
-				model.PreviousTab = model.ActiveTab
-				model.ActiveTab = len(model.tabModels) - 1
-				model.menuSpawned = true
-
+				model.spawnMenu()
 				return model, nil
 			}
 
-			//model.switchBack()
 			model.ActiveTab = model.PreviousTab
 			model.menuSpawned = false
+			model.tabs = model.tabs[:len(model.tabs)-1]
 
 			if model.ActiveTab == 0 {
-				return model, model.tabModels[0].Init()
+				return model, model.tabs[0].model.Init()
 			}
 			return model, nil
 		}
 	}
 
 	var command tea.Cmd
-	model.tabModels[model.ActiveTab], command =
-		model.tabModels[model.ActiveTab].Update(message)
+	model.tabs[model.ActiveTab].model, command =
+		model.tabs[model.ActiveTab].model.Update(message)
 
 	if command != nil {
 		tabMessage := command()
-		if tabMessage, ok := tabMessage.(MenuEntry); ok {
-			model.switchTab(tabMessage.title, tabMessage.initialiser)
+		switch tabMessage := tabMessage.(type) {
+		case MenuEntry:
+			model.switchTab(tabMessage)
+		case string:
+			switch tabMessage {
+			case "switchHome":
+				model.switchHome()
+			}
 		}
 	}
 
@@ -146,14 +123,23 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 }
 
-func (model *Model) switchTab(title string, initialiser ModelInit) {
-	model.tabs = append(model.tabs, title)
-	moaiApp := initialiser(model)
-	model.tabModels[model.ActiveTab] = moaiApp
+func (model *Model) switchHome() {
+	model.tabs = model.tabs[:len(model.tabs)-1]
+	model.menuSpawned = false
+	model.ActiveTab = 0
+	model.PreviousTab = 0
+}
+
+func (model *Model) switchTab(message MenuEntry) {
+	model.tabs[model.ActiveTab] = TabEntry{
+		title:        message.title,
+		model:        message.initialiser(model),
+		lastAccessed: time.Now(),
+	}
 	model.menuSpawned = false
 }
 
 // Main function to render contents of the application.
 func (model Model) View() string {
-	return model.tabModels[model.ActiveTab].View()
+	return model.tabs[model.ActiveTab].model.View()
 }

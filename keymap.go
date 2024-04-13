@@ -3,9 +3,9 @@ package main
 import "github.com/charmbracelet/bubbles/key"
 
 type GlobalKeyMap struct {
-	Quit   key.Binding
-	Menu   key.Binding
-	NewTab key.Binding
+	Quit key.Binding
+	Menu key.Binding
+	Home key.Binding
 }
 
 func initGlobalKeyMap(modkey string) GlobalKeyMap {
@@ -18,12 +18,6 @@ func initGlobalKeyMap(modkey string) GlobalKeyMap {
 			key.WithKeys(modkey+"e"),
 			key.WithHelp(modkey+"e", "toggle menu"),
 		),
-		/*
-			NewTab: key.NewBinding(
-				key.WithKeys(modkey+"t"),
-				key.WithHelp(modkey+"t", "new tab"),
-			),
-		*/
 	}
 
 	return keys
@@ -33,9 +27,10 @@ type MenuKeyMap struct {
 	Exit  key.Binding
 	Help  key.Binding
 	Focus key.Binding
+	Home  key.Binding
 }
 
-func initMenuKeyMap(_ string) MenuKeyMap {
+func initMenuKeyMap(modkey string) MenuKeyMap {
 	keys := MenuKeyMap{
 		Exit: key.NewBinding(
 			key.WithKeys("esc"),
@@ -49,13 +44,17 @@ func initMenuKeyMap(_ string) MenuKeyMap {
 			key.WithKeys("tab"),
 			key.WithHelp("tab", "switch focus"),
 		),
+		Home: key.NewBinding(
+			key.WithKeys(modkey+"h"),
+			key.WithHelp(modkey+"h", "home"),
+		),
 	}
 
 	return keys
 }
 
 func (keymap MenuKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{keymap.Focus, keymap.Help, keymap.Exit}
+	return []key.Binding{keymap.Home, keymap.Focus, keymap.Help, keymap.Exit}
 }
 
 // FullHelp returns keybindings for the expanded help view. It's part of the

@@ -1,13 +1,14 @@
 package main
 
 import (
+	"sort"
+
 	"github.com/Genekkion/moai/apps/bork"
-	_ "github.com/Genekkion/moai/apps/calculator"
+	"github.com/Genekkion/moai/apps/calculator"
 	"github.com/Genekkion/moai/apps/calendar"
-	_ "github.com/Genekkion/moai/apps/calendar"
-	_ "github.com/Genekkion/moai/apps/diary"
-	_ "github.com/Genekkion/moai/apps/gpt"
-	_ "github.com/Genekkion/moai/apps/todo"
+	"github.com/Genekkion/moai/apps/diary"
+	"github.com/Genekkion/moai/apps/gpt"
+	"github.com/Genekkion/moai/apps/todo"
 	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -28,33 +29,26 @@ var (
 			description: "Track your life",
 			initialiser: calendar.InitCalendar,
 		},
-		/*
-			MenuEntry{
-				title:       "Calculator",
-				description: "A simple calculator",
-				initialiser: calculator.InitCalculator,
-			},
-			MenuEntry{
-				title:       "Diary",
-				description: "Your personal diary",
-				initialiser: diary.InitDiary,
-			},
-				MenuEntry{
-					title:       "GPT",
-					description: "Access OpenAI's models",
-					initialiser: gpt.InitGPT,
-				},
-				MenuEntry{
-					title:       "Todo",
-					description: "A simple todo list",
-					initialiser: todo.InitTodo,
-				},
-		*/
-	}
-
-	fakeRecentlyUsed = []table.Row{
-		{"Bork", "2 mins ago"},
-		{"Notes", "1 hour ago"},
+		MenuEntry{
+			title:       "Calculator",
+			description: "A simple calculator",
+			initialiser: calculator.InitCalculator,
+		},
+		MenuEntry{
+			title:       "Diary",
+			description: "Your personal diary",
+			initialiser: diary.InitDiary,
+		},
+		MenuEntry{
+			title:       "GPT",
+			description: "Access OpenAI's models",
+			initialiser: gpt.InitGPT,
+		},
+		MenuEntry{
+			title:       "Todo",
+			description: "A simple todo list",
+			initialiser: todo.InitTodo,
+		},
 	}
 )
 
@@ -68,8 +62,6 @@ type MenuModel struct {
 	keymap       MenuKeyMap
 	listFocused  bool
 	showHelp     bool
-
-	mainModel *Model
 }
 
 type ModelInit func(external.MoaiModel) tea.Model
@@ -80,17 +72,34 @@ type MenuEntry struct {
 	initialiser ModelInit
 }
 
-func (menuEntry MenuEntry) Title() string {
-	return menuEntry.title
+func (entry MenuEntry) Title() string {
+	return entry.title
 }
-func (menuEntry MenuEntry) Description() string {
-	return menuEntry.description
+func (entry MenuEntry) Description() string {
+	return entry.description
 }
-func (menuEntry MenuEntry) FilterValue() string {
-	return menuEntry.title + " " + menuEntry.description
+func (entry MenuEntry) FilterValue() string {
+	return entry.title + " " + entry.description
 }
 
-func InitMenu(mainModel *Model) tea.Model {
+func extractTabs(entries TabEntries) []table.Row {
+	numEntries := entries.Len() - 1
+	if numEntries == 0 {
+		return []table.Row{}
+	}
+	rows := make([]table.Row, numEntries)
+	validEntries := entries[1:]
+	sort.Sort(validEntries)
+	for i := range numEntries {
+		rows[i] = []string{
+			validEntries[i].title,
+			validEntries[i].timeElapsedString(),
+		}
+	}
+	return rows
+}
+
+func InitMenu(mainModel Model) tea.Model {
 	recentlyUsedColumns := []table.Column{
 		{Title: "Application", Width: 15},
 		{Title: "Last used", Width: 10},
@@ -104,7 +113,6 @@ func InitMenu(mainModel *Model) tea.Model {
 		Bold(true)
 
 	model := MenuModel{
-
 		list: list.New(
 			MOAI_APPS,
 			list.NewDefaultDelegate(),
@@ -113,26 +121,24 @@ func InitMenu(mainModel *Model) tea.Model {
 		),
 		table: table.New(
 			table.WithColumns(recentlyUsedColumns),
-			table.WithRows(fakeRecentlyUsed),
+			table.WithRows(extractTabs(mainModel.tabs)),
 			table.WithFocused(false),
 			table.WithStyles(tableStyle),
 		),
 		tableColumns: recentlyUsedColumns,
-
-		mainModel: mainModel,
 
 		modelStyle: lipgloss.NewStyle().
 			Padding(1).
 			AlignHorizontal(lipgloss.Center).
 			Border(lipgloss.RoundedBorder()),
 		listStyle: lipgloss.NewStyle(),
-		//Border(lipgloss.RoundedBorder()),
 		helpStyle: lipgloss.NewStyle(),
 
-		keymap:      initMenuKeyMap((*mainModel).ModKey()),
+		keymap:      initMenuKeyMap(mainModel.ModKey()),
 		showHelp:    true,
 		listFocused: true,
 	}
+
 	model.list.Title = "Available apps"
 	model.list.SetShowHelp(false)
 	model.list.DisableQuitKeybindings()
@@ -153,7 +159,6 @@ func (model *MenuModel) updateDimensions(message tea.Msg) {
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
 		model.modelStyle = model.modelStyle.
-			//Background(lipgloss.Color("#00ff00")).
 			Height(message.Height - 2).
 			Width(message.Width - 2)
 		model.helpStyle = model.helpStyle.
@@ -213,10 +218,15 @@ func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch message.String() {
 			case "enter":
-				//model.mainModel.p
-
 				return model, func() tea.Msg {
 					return model.list.SelectedItem().(MenuEntry)
+				}
+			}
+
+			switch {
+			case key.Matches(message, model.keymap.Home):
+				return model, func() tea.Msg {
+					return "switchHome"
 				}
 			}
 		}
