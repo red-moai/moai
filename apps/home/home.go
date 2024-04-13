@@ -52,7 +52,7 @@ func (model HomeModel) GetSpinner() spinner.Model {
 	return model.spinner
 }
 
-func InitHome(mainModel external.MoaiModel) tea.Model {
+func InitHome(mainModel external.MoaiModel) external.MoaiApp {
 	model := HomeModel{
 		quote: homeQuotes[rand.Intn(len(homeQuotes))],
 		spinner: spinner.New(

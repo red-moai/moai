@@ -5,7 +5,8 @@ import (
 	"github.com/Genekkion/moai/apps/calculator"
 	"github.com/Genekkion/moai/apps/calendar"
 	"github.com/Genekkion/moai/apps/diary"
-	"github.com/Genekkion/moai/apps/todo"
+	_ "github.com/Genekkion/moai/apps/gpt"
+	_ "github.com/Genekkion/moai/apps/todo"
 	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -14,38 +15,42 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type ModelInit func(external.MoaiModel) tea.Model
+type ModelInit func(external.MoaiModel) external.MoaiApp
 
 var (
-	MOAI_APPS = map[string]ModelInit{
-		"Bork":       bork.InitBork,
-		"Calculator": calculator.InitCalculator,
-		"Calendar":   calendar.InitCalendar,
-		"Diary":      diary.InitDiary,
-		"Todo":       todo.InitTodo,
-	}
-
-	AVAILABLE_APPS = []list.Item{
+	MOAI_APPS = []list.Item{
 		MenuEntry{
 			title:       "Bork",
 			description: "A HTTP client for quick testing",
+			initialiser: bork.InitBork,
 		},
 		MenuEntry{
 			title:       "Calendar",
 			description: "Track your life",
+			initialiser: calendar.InitCalendar,
 		},
 		MenuEntry{
 			title:       "Calculator",
 			description: "A simple calculator",
+			initialiser: calculator.InitCalculator,
 		},
 		MenuEntry{
 			title:       "Diary",
 			description: "Your personal diary",
+			initialiser: diary.InitDiary,
 		},
-		MenuEntry{
-			title:       "Todo",
-			description: "A simple todo list",
-		},
+		/*
+			MenuEntry{
+				title:       "GPT",
+				description: "Access OpenAI's models",
+				initialiser: gpt.InitGPT,
+			},
+			MenuEntry{
+				title:       "Todo",
+				description: "A simple todo list",
+				initialiser: todo.InitTodo,
+			},
+		*/
 	}
 
 	fakeRecentlyUsed = []table.Row{
@@ -55,6 +60,10 @@ var (
 )
 
 type MenuModel struct {
+	tabs      []string
+	tabModels []external.MoaiApp
+	tabIndex  int
+
 	list         list.Model
 	table        table.Model
 	tableColumns []table.Column
@@ -65,12 +74,13 @@ type MenuModel struct {
 	listFocused  bool
 	showHelp     bool
 
-	mainModel external.MoaiModel
+	mainModel *Model
 }
 
 type MenuEntry struct {
 	title       string
 	description string
+	initialiser ModelInit
 }
 
 func (menuEntry MenuEntry) Title() string {
@@ -83,7 +93,7 @@ func (menuEntry MenuEntry) FilterValue() string {
 	return menuEntry.title + " " + menuEntry.description
 }
 
-func InitMenu(mainModel external.MoaiModel) MenuModel {
+func InitMenu(mainModel *Model) external.MoaiApp {
 	recentlyUsedColumns := []table.Column{
 		{Title: "Application", Width: 15},
 		{Title: "Last used", Width: 10},
@@ -97,8 +107,12 @@ func InitMenu(mainModel external.MoaiModel) MenuModel {
 		Bold(true)
 
 	model := MenuModel{
+		tabs:      []string{},
+		tabModels: []external.MoaiApp{},
+		tabIndex:  -1,
+
 		list: list.New(
-			AVAILABLE_APPS,
+			MOAI_APPS,
 			list.NewDefaultDelegate(),
 			50,
 			50,
@@ -118,10 +132,10 @@ func InitMenu(mainModel external.MoaiModel) MenuModel {
 			AlignHorizontal(lipgloss.Center).
 			Border(lipgloss.RoundedBorder()),
 		listStyle: lipgloss.NewStyle(),
-			//Border(lipgloss.RoundedBorder()),
+		//Border(lipgloss.RoundedBorder()),
 		helpStyle: lipgloss.NewStyle(),
 
-		keymap:      initMenuKeyMap(mainModel.ModKey()),
+		keymap:      initMenuKeyMap((*mainModel).ModKey()),
 		showHelp:    true,
 		listFocused: true,
 	}
@@ -174,11 +188,11 @@ func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(message, model.keymap.Exit):
-			model.mainModel.ToggleMenu()
-
+			(*model.mainModel).toggleMenu()
+			return model, nil
 		case key.Matches(message, model.keymap.Help):
 			model.showHelp = !model.showHelp
-
+			return model, nil
 		case key.Matches(message, model.keymap.Focus):
 			if model.listFocused {
 				model.table.Focus()
@@ -186,11 +200,35 @@ func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				model.table.Blur()
 			}
 			model.listFocused = !model.listFocused
+			return model, nil
 		}
 	}
 
 	var command tea.Cmd
 	if model.listFocused {
+		switch message := message.(type) {
+
+		case tea.KeyMsg:
+			switch message.String() {
+			case "enter":
+				application := model.list.SelectedItem().(MenuEntry)
+				moaiApp := application.initialiser(*model.mainModel)
+
+				(*model.mainModel).menuSpawned = false
+				(*model.mainModel).onHome = false
+				(*model.mainModel).CurrentModel = &moaiApp
+				(*model.mainModel).PrevModel = nil
+
+				/*
+					model.tabs = append(model.tabs, application.title)
+					model.tabModels = append(model.tabModels, moaiApp)
+					model.tabIndex = len(model.tabs) - 1
+				*/
+
+				return moaiApp, nil
+			}
+		}
+
 		model.list, command = model.list.Update(message)
 	} else {
 		model.table, command = model.table.Update(message)

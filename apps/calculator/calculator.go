@@ -11,7 +11,7 @@ type CalculatorModel struct {
 	result   string
 }
 
-func InitCalculator(_ external.MoaiModel) tea.Model {
+func InitCalculator(_ external.MoaiModel) external.MoaiApp{
 	model := CalculatorModel{
 		Textarea: textarea.New(),
 	}

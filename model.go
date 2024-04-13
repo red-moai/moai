@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/Genekkion/moai/apps/home"
+	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -13,19 +14,17 @@ type Model struct {
 	Error  error
 	modkey string
 
-	// Tab
-	Tabs        *[]string
-	TabModels   []tea.Model
-	ActiveTab   *int // 0 index
-	keyMap      GlobalKeyMap
-	homeModel   home.HomeModel
-	menuModel   MenuModel
-	onHome      bool
-	menuSpawned bool
+	CurrentModel *external.MoaiApp
+	PrevModel    *external.MoaiApp
+	ActiveTab    int // 0 index
+	keyMap       GlobalKeyMap
+	homeModel    external.MoaiApp
+	menuModel    external.MoaiApp
+	onHome       bool
+	menuSpawned  bool
 }
 
 var (
-	MAX_TABS       = 9
 	VALID_MOD_KEYS = []string{
 		"alt",
 	}
@@ -53,44 +52,41 @@ func InitModel() Model {
 	model := Model{
 		onHome:      true,
 		menuSpawned: false,
+		ActiveTab:   0,
 	}
 
 	model.setModkey()
 	model.homeModel = home.InitHome(model).(home.HomeModel)
-	model.menuModel = InitMenu(model)
+	model.menuModel = InitMenu(&model)
 	model.keyMap = initGlobalKeyMap(model.modkey)
+
+	model.CurrentModel = &model.homeModel
+	model.PrevModel = nil
 
 	return model
 }
 
 func (model *Model) toggleMenu() {
+	if model.menuSpawned {
+		// If menu is visible, then go back to previous screen
+		model.CurrentModel = model.PrevModel
+		model.PrevModel = nil
+	} else {
+		// Else spawn a menu
+		model.PrevModel = model.CurrentModel
+		model.CurrentModel = &model.menuModel
+	}
 	model.menuSpawned = !model.menuSpawned
-}
-
-func (model Model) ToggleMenu() {
-	model.toggleMenu()
 }
 
 func (model Model) ModKey() string {
 	return model.modkey
 }
 
-func (model Model) GetOnHome() bool {
-	return model.onHome
-}
-
-func (model Model) SetOnHome(onHome bool) {
-	model.onHome = onHome
-}
-
-func (model *Model) setOnHome(onHome bool) {
-	model.SetOnHome(onHome)
-}
-
 func (model Model) Init() tea.Cmd {
 	return tea.Batch(
 		tea.SetWindowTitle("M O A I 🗿"),
-		model.homeModel.GetSpinner().Tick,
+		model.homeModel.Init(),
 	)
 }
 
@@ -115,23 +111,18 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(message, model.keyMap.Menu):
 			model.toggleMenu()
+
+			if model.onHome {
+				return model, model.homeModel.Init()
+			}
+
+			return model, nil
 		}
 	}
 
-	var command tea.Cmd
-	switch {
-	case model.menuSpawned:
-		var menuModel tea.Model
-		menuModel, command = model.menuModel.Update(message)
-		model.menuModel = menuModel.(MenuModel)
-
-	case model.onHome:
-		var homeModel tea.Model
-		homeModel, command = model.homeModel.Update(message)
-		model.homeModel = homeModel.(home.HomeModel)
-
-		return model, tea.Batch(command, model.homeModel.GetSpinner().Tick)
-	}
+	currentModel, command := (*model.CurrentModel).Update(message)
+	moaiApp := currentModel.(external.MoaiApp)
+	model.CurrentModel = &moaiApp
 
 	return model, command
 
@@ -139,10 +130,5 @@ func (model Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 // Main function to render contents of the application.
 func (model Model) View() string {
-	if model.menuSpawned {
-		return model.menuModel.View()
-	} else if model.onHome {
-		return model.homeModel.View()
-	}
-	return "booya"
+	return (*model.CurrentModel).View()
 }

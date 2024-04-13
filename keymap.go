@@ -18,10 +18,12 @@ func initGlobalKeyMap(modkey string) GlobalKeyMap {
 			key.WithKeys(modkey+"e"),
 			key.WithHelp(modkey+"e", "toggle menu"),
 		),
-		NewTab: key.NewBinding(
-			key.WithKeys(modkey+"t"),
-			key.WithHelp(modkey+"t", "new tab"),
-		),
+		/*
+			NewTab: key.NewBinding(
+				key.WithKeys(modkey+"t"),
+				key.WithHelp(modkey+"t", "new tab"),
+			),
+		*/
 	}
 
 	return keys
@@ -33,7 +35,7 @@ type MenuKeyMap struct {
 	Focus key.Binding
 }
 
-func initMenuKeyMap(modkey string) MenuKeyMap {
+func initMenuKeyMap(_ string) MenuKeyMap {
 	keys := MenuKeyMap{
 		Exit: key.NewBinding(
 			key.WithKeys("esc"),

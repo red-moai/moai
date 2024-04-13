@@ -34,7 +34,7 @@ var (
 	}
 )
 
-func InitBork(mainModel external.MoaiModel) tea.Model {
+func InitBork(mainModel external.MoaiModel) external.MoaiApp {
 	borkListKeyBindAdd = key.NewBinding(
 		key.WithKeys(mainModel.ModKey()+"a"),
 		key.WithHelp(mainModel.ModKey()+"a", "add new"),
@@ -69,7 +69,6 @@ func (model BorkModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 		if key.Matches(message, borkListKeyBindAdd) {
 			borkFormModel := initBorkForm(&model)
-			//model.MainModel.SwapActiveModel("", borkFormModel)
 
 			return borkFormModel, nil
 		}
