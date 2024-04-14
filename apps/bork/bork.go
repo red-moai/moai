@@ -54,7 +54,8 @@ var (
 		Bold(true)
 
 	listStyle = lipgloss.NewStyle().
-			Padding(0, 1)
+		//Border(lipgloss.NormalBorder())
+		Padding(0, 1)
 )
 
 func InitBork(mainModel external.MoaiModel) tea.Model {
@@ -101,9 +102,9 @@ func (model *BorkModel) updateDimensions(message tea.Msg) {
 			Width(newWidth)
 
 		listStyle = listStyle.
-			Height(newHeight - 2).
-			Width(newWidth - 2)
-		model.list.SetHeight(newHeight - 4)
+			Height(newHeight).
+			Width(newWidth - 4)
+		model.list.SetHeight(newHeight)
 		model.list.SetWidth(newWidth - 4)
 	}
 }

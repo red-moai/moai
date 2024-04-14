@@ -128,7 +128,8 @@ func InitMenu(mainModel Model) tea.Model {
 
 	model.list.Title = "Available apps"
 	model.list.SetShowHelp(false)
-	model.list.DisableQuitKeybindings()
+	model.list.KeyMap.ForceQuit.Unbind()
+	model.list.KeyMap.Quit.Unbind()
 	model.list.KeyMap.ShowFullHelp.Unbind()
 	model.list.KeyMap.CloseFullHelp.Unbind()
 
@@ -190,8 +191,6 @@ func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		return model, nil
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(message, model.keymap.Exit):
-			return model, nil
 		case key.Matches(message, model.keymap.Help):
 			model.showHelp = !model.showHelp
 			return model, nil
