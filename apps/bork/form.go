@@ -1,6 +1,7 @@
 package bork
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -17,28 +18,41 @@ var (
 	}
 )
 
-type BorkFormModel struct {
-	// For swapping back to parent
-	// once done
-	parentModel *BorkModel
+const (
+	NEW_CATEGORY = "New category"
+)
 
+type BorkFormModel struct {
 	form     *huh.Form
 	category string
 }
 
-func initBorkForm(parentModel *BorkModel) tea.Model {
+func find(borkCategories []string, target string) bool {
+	for _, category := range borkCategories {
+		if category == target {
+			return true
+		}
+	}
+	return false
+}
 
-	categoryList := make([]huh.Option[string], len(parentModel.borkCategories))
-	for i, category := range parentModel.borkCategories {
+func initBorkForm(borkCategories []string) tea.Model {
+
+	categoryList := make([]huh.Option[string], len(borkCategories)+1)
+	for i, category := range borkCategories {
 		categoryList[i] = huh.NewOption(category, strings.ToLower(category))
 	}
 
-	borkFormKeyMap := huh.NewDefaultKeyMap()
-	borkFormKeyMap.Text.Editor.Unbind()
+	categoryList[len(categoryList)-1] = huh.NewOption(
+		NEW_CATEGORY,
+		NEW_CATEGORY,
+	)
 
-	model := BorkFormModel{
-		parentModel: parentModel,
-	}
+	formKeymap := huh.NewDefaultKeyMap()
+	formKeymap.Text.Editor.Unbind()
+	formKeymap.Quit.Unbind()
+
+	model := BorkFormModel{}
 
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -51,10 +65,19 @@ func initBorkForm(parentModel *BorkModel) tea.Model {
 		huh.NewGroup(
 			huh.NewInput().
 				Key("newCategory").
-				Title("New Category"),
+				Title("New Category").
+				Validate(func(category string) error {
+					if category == "" {
+						return errors.New("Cannot be left empty!")
+					} else if strings.ToLower(category) == strings.ToLower(NEW_CATEGORY) {
+						return errors.New("Wait what?")
+					} else if find(borkCategories, category) {
+						return errors.New("Already exists!")
+					}
+					return nil
+				}),
 		).WithHideFunc(func() bool {
-
-			return model.category != "new category"
+			return model.category != NEW_CATEGORY
 		}),
 
 		huh.NewGroup(
@@ -85,7 +108,8 @@ func initBorkForm(parentModel *BorkModel) tea.Model {
 				Affirmative("Bork!").
 				Negative("Nay"),
 		),
-	).WithKeyMap(borkFormKeyMap)
+	).WithKeyMap(formKeymap).
+		WithShowHelp(false)
 
 	model.form = form
 	return model
@@ -105,15 +129,19 @@ func (model BorkFormModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		// 	model.parentModel.ModelList.List.InsertItem(
 		// 		0,
 		// 		BorkEntry{
-		// 			title:       model.form.GetString("title"),
-		// 			category:    model.form.GetString("category"),
-		// 			description: model.form.GetString("description"),
-		// 			method:      model.form.GetString("method"),
-		// 			url:         model.form.GetString("url"),
 		// 		},
 		// 	),
 		// )
-		return model.parentModel, tea.Batch(commands...)
+		//return model.parentModel, tea.Batch(commands...)
+		return model, func() tea.Msg {
+			return BorkEntry{
+				title:       model.form.GetString("title"),
+				category:    model.form.GetString("category"),
+				description: model.form.GetString("description"),
+				method:      model.form.GetString("method"),
+				url:         model.form.GetString("url"),
+			}
+		}
 	}
 
 	switch message := message.(type) {
@@ -122,7 +150,8 @@ func (model BorkFormModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEscape:
 			// model.parentModel.ModelList.List.ResetSelected()
 			// model.parentModel.ModelList.SelectedItem = nil
-			return model.parentModel, tea.Batch(commands...)
+			//return model.parentModel, tea.Batch(commands...)
+			return model, nil
 		}
 	}
 

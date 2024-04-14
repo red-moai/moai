@@ -34,7 +34,7 @@ var (
 			Margin(1, 0)
 
 	USERNAME      = "Mr Moai"
-	PRETTY_LAYOUT = "02 January 2006, 15:04:05"
+	PRETTY_LAYOUT = "02 January 2006, 3:04:05pm"
 )
 
 type HomeModel struct {
