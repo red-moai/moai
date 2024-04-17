@@ -1,18 +1,21 @@
 package main
 
 import (
+	"os/user"
 	"sort"
 	"time"
 
 	"github.com/Genekkion/moai/apps/home"
+	"github.com/Genekkion/moai/colors"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Model struct {
 	// Globals
-	Error  error
-	modkey string
+	Error    error
+	modkey   string
+	username string
 
 	ActiveTab   int
 	PreviousTab int
@@ -22,6 +25,7 @@ type Model struct {
 	onHome      bool
 	menuSpawned bool
 
+	colorScheme     colors.ColorScheme
 	latestWindowMsg tea.Msg
 }
 
@@ -37,6 +41,14 @@ func InitModel() Model {
 		ActiveTab:   0,
 		PreviousTab: 0,
 		modkey:      getModkey(),
+		colorScheme: colors.NewTokyoNight(),
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		model.username = "User"
+	} else {
+		model.username = currentUser.Username
 	}
 
 	model.keyMap = initGlobalKeyMap(model.modkey)
@@ -47,11 +59,20 @@ func InitModel() Model {
 		},
 	}
 
+
 	return model
 }
 
 func (model Model) ModKey() string {
 	return model.modkey
+}
+
+func (model Model) Username() string {
+	return model.username
+}
+
+func (model Model) ColorScheme() colors.ColorScheme {
+	return model.colorScheme
 }
 
 func (model Model) Init() tea.Cmd {

@@ -136,6 +136,10 @@ func InitMenu(mainModel Model) tea.Model {
 	model.table.GotoTop()
 	model.updateDimensions(mainModel.latestWindowMsg)
 
+	colorScheme := mainModel.ColorScheme()
+	menuModelStyle = menuModelStyle.
+		Background(colorScheme.BG2())
+
 	return model
 }
 
