@@ -1,12 +1,12 @@
-package main
+package internal
 
 import (
-	"github.com/Genekkion/moai/apps/bork"
-	"github.com/Genekkion/moai/apps/calculator"
-	"github.com/Genekkion/moai/apps/calendar"
-	"github.com/Genekkion/moai/apps/diary"
-	"github.com/Genekkion/moai/apps/gpt"
-	"github.com/Genekkion/moai/apps/todo"
+	// "github.com/Genekkion/moai/apps/bork"
+	// "github.com/Genekkion/moai/apps/calculator"
+	// "github.com/Genekkion/moai/apps/calendar"
+	// "github.com/Genekkion/moai/apps/diary"
+	// "github.com/Genekkion/moai/apps/gpt"
+	// "github.com/Genekkion/moai/apps/todo"
 	"github.com/Genekkion/moai/external"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -17,36 +17,36 @@ import (
 
 var (
 	MOAI_APPS = []list.Item{
-		MenuEntry{
-			title:       "Bork",
-			description: "A HTTP client for quick testing",
-			initialiser: bork.InitBork,
-		},
-		MenuEntry{
-			title:       "Calendar",
-			description: "Track your life",
-			initialiser: calendar.InitCalendar,
-		},
-		MenuEntry{
-			title:       "Calculator",
-			description: "A simple calculator",
-			initialiser: calculator.InitCalculator,
-		},
-		MenuEntry{
-			title:       "Diary",
-			description: "Your personal diary",
-			initialiser: diary.InitDiary,
-		},
-		MenuEntry{
-			title:       "GPT",
-			description: "Access OpenAI's models",
-			initialiser: gpt.InitGPT,
-		},
-		MenuEntry{
-			title:       "Todo",
-			description: "A simple todo list",
-			initialiser: todo.InitTodo,
-		},
+		// MenuEntry{
+		// 	title:       "Bork",
+		// 	description: "A HTTP client for quick testing",
+		// 	initialiser: bork.InitBork,
+		// },
+		// MenuEntry{
+		// 	title:       "Calendar",
+		// 	description: "Track your life",
+		// 	initialiser: calendar.InitCalendar,
+		// },
+		// MenuEntry{
+		// 	title:       "Calculator",
+		// 	description: "A simple calculator",
+		// 	initialiser: calculator.InitCalculator,
+		// },
+		// MenuEntry{
+		// 	title:       "Diary",
+		// 	description: "Your personal diary",
+		// 	initialiser: diary.InitDiary,
+		// },
+		// MenuEntry{
+		// 	title:       "GPT",
+		// 	description: "Access OpenAI's models",
+		// 	initialiser: gpt.InitGPT,
+		// },
+		// MenuEntry{
+		// 	title:       "Todo",
+		// 	description: "A simple todo list",
+		// 	initialiser: todo.InitTodo,
+		// },
 	}
 )
 
@@ -59,7 +59,7 @@ type MenuModel struct {
 	showHelp     bool
 }
 
-type ModelInit func(external.MoaiModel) tea.Model
+type ModelInit func(external.MoaiModel) external.MoaiApp
 
 type MenuEntry struct {
 	title       string
@@ -134,7 +134,7 @@ func InitMenu(mainModel Model) tea.Model {
 	model.list.KeyMap.CloseFullHelp.Unbind()
 
 	model.table.GotoTop()
-	model.updateDimensions(mainModel.latestWindowMsg)
+	model.updateDimensions(mainModel.windowHeight, mainModel.windowWidth)
 
 	colorScheme := mainModel.ColorScheme()
 	menuModelStyle = menuModelStyle.
@@ -156,41 +156,38 @@ var (
 	menuHelpStyle   = lipgloss.NewStyle()
 )
 
-func (model *MenuModel) updateDimensions(message tea.Msg) {
-	switch message := message.(type) {
-	case tea.WindowSizeMsg:
-		menuModelStyle = menuModelStyle.
-			Height(message.Height - 2).
-			Width(message.Width - 2)
-		menuHelpStyle = menuHelpStyle.
-			Width(message.Width - 4)
+func (model *MenuModel) updateDimensions(height int, width int) {
+	menuModelStyle = menuModelStyle.
+		Height(height - 2).
+		Width(width - 2)
+	menuHelpStyle = menuHelpStyle.
+		Width(width - 4)
 
-		widgetHeight := message.Height - 6 -
-			lipgloss.Height(model.helpView())
-		widgetWidth := (message.Width-4)/2 - 4
+	widgetHeight := height - 6 -
+		lipgloss.Height(model.helpView())
+	widgetWidth := (width-4)/2 - 4
 
-		model.list.SetHeight(widgetHeight)
-		model.list.SetWidth(widgetWidth)
-		model.table.SetHeight(widgetHeight - 2)
+	model.list.SetHeight(widgetHeight)
+	model.list.SetWidth(widgetWidth)
+	model.table.SetHeight(widgetHeight - 2)
 
-		newColumns := make([]table.Column, len(model.tableColumns))
+	newColumns := make([]table.Column, len(model.tableColumns))
 
-		for i := range len(model.tableColumns) {
-			newColumns[i].Title = model.tableColumns[i].Title
-			newColumns[i].Width = ((message.Width-4)/2 - 7) / 2
-		}
-		model.table.SetColumns(newColumns)
-
-		menuWidgetStyle = menuWidgetStyle.
-			Height(widgetHeight - 14).
-			Width(widgetWidth + 1)
+	for i := range len(model.tableColumns) {
+		newColumns[i].Title = model.tableColumns[i].Title
+		newColumns[i].Width = ((width-4)/2 - 7) / 2
 	}
+	model.table.SetColumns(newColumns)
+
+	menuWidgetStyle = menuWidgetStyle.
+		Height(widgetHeight - 14).
+		Width(widgetWidth + 1)
 }
 
 func (model MenuModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch message := message.(type) {
 	case tea.WindowSizeMsg:
-		model.updateDimensions(message)
+		model.updateDimensions(message.Height, message.Width)
 
 		return model, nil
 	case tea.KeyMsg:

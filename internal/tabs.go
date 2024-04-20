@@ -1,15 +1,15 @@
-package main
+package internal
 
 import (
 	"fmt"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/Genekkion/moai/external"
 )
 
 type TabEntry struct {
 	title        string
-	model        tea.Model
+	model        external.MoaiApp
 	lastAccessed time.Time
 }
 

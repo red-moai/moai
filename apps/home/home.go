@@ -49,6 +49,7 @@ type HomeModel struct {
 	keyMap        KeyMap
 	username      string
 	quoteReceived bool
+	debug         string
 
 	MainModel *external.MoaiModel
 }
@@ -71,7 +72,7 @@ type QuoteMessage struct {
 
 func getQuote() tea.Msg {
 	response, err := http.DefaultClient.Get("http://localhost:3000/quote")
-	if response.StatusCode != http.StatusOK || err != nil {
+	if err != nil || response.StatusCode != http.StatusOK {
 		log.ErrorWrapper(err)
 		return QuoteMessage{
 			quote: homeQuotes[rand.Intn(len(homeQuotes))],
@@ -131,7 +132,6 @@ func InitHome(mainModel external.MoaiModel) tea.Model {
 }
 
 func (model HomeModel) Init() tea.Cmd {
-
 	return tea.Batch(model.spinner.Tick, getQuote)
 }
 
@@ -144,7 +144,7 @@ func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		modelStyle = modelStyle.
 			Width(message.Width).
-			Height(message.Height)
+			Height(message.Height - 2)
 
 	case QuoteMessage:
 		model.quoteReceived = true
@@ -162,7 +162,7 @@ func (model HomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		return model, command
 
 	case tea.KeyMsg:
-
+		model.debug = message.String()
 	}
 
 	return model, nil
@@ -250,6 +250,7 @@ func (model HomeModel) View() string {
 	text.WriteString("\n")
 	text.WriteString(model.timeView())
 	text.WriteString("\n")
+	text.WriteString(fmt.Sprintf("Debug: %s", model.debug))
 
-	return modelStyle.Render(text.String())
+	return modelStyle.Render(text.String()) 
 }

@@ -7,7 +7,23 @@ import (
 
 type MoaiModel interface {
 	ModKey() string
-	GetLatestWindowMessage() tea.Msg
+	WindowWidth() int
+	WindowHeight() int
 	ColorScheme() colors.ColorScheme
 	Username() string
+}
+
+type MoaiApp interface {
+	tea.Model
+}
+
+type MoaiStatusBar interface {
+	tea.Model
+	SetTitle(string)
+	SetMessage(string)
+}
+
+type MoaiStatusBarMessage struct {
+	Title   string
+	Message string
 }

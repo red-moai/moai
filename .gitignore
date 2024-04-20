@@ -1,3 +1,5 @@
 moai
 .env
 data/sqlite.db
+*.tape
+bubblegum/

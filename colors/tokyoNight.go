@@ -61,7 +61,7 @@ func NewTokyoNight() ColorScheme {
 		},
 		accent3: []lipgloss.Color{
 			"#33635C",
-			"#73DACA",
+			"#1F1F28",
 		},
 	}
 }

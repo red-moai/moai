@@ -1,11 +1,12 @@
-package main
+package internal
 
 import "github.com/charmbracelet/bubbles/key"
 
 type GlobalKeyMap struct {
-	Quit key.Binding
-	Menu key.Binding
-	Home key.Binding
+	Quit   key.Binding
+	Menu   key.Binding
+	Home   key.Binding
+	NewTab key.Binding
 }
 
 func initGlobalKeyMap(modkey string) GlobalKeyMap {
@@ -15,8 +16,12 @@ func initGlobalKeyMap(modkey string) GlobalKeyMap {
 			key.WithHelp("ctrl+c", "quit"),
 		),
 		Menu: key.NewBinding(
-			key.WithKeys(modkey+"e"),
-			key.WithHelp(modkey+"e", "toggle menu"),
+			key.WithKeys("ctrl+e"),
+			key.WithHelp("ctrl+e", "toggle menu"),
+		),
+		NewTab: key.NewBinding(
+			key.WithKeys("ctrl+t"),
+			key.WithHelp("ctrl+t", "new tab"),
 		),
 	}
 
